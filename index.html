@@ -169,6 +169,43 @@ body{display:flex;align-items:center;justify-content:center}
   border:1px solid var(--cyan-soft);font-size:22px;font-weight:600;opacity:0;transition:opacity .2s;z-index:50;pointer-events:none;text-align:center}
 #toast.on{opacity:1}
 
+
+/* ---------- drop badge, sheet actions ---------- */
+.drop{position:absolute;top:10px;left:10px;padding:4px 12px;border-radius:15px;background:#0b3d20;color:#7dffb0;border:1px solid #2fbf71;font-size:17px;font-weight:700;z-index:2}
+.drop:empty{display:none}
+#sheetActions{flex:none;display:flex;gap:10px;padding:10px 22px 8px;border-bottom:1px solid var(--cyan-soft)}
+#sheetActions i{font-style:normal;flex:1;text-align:center;font-size:19px;font-weight:700;padding:9px 6px;border-radius:14px;border:1px solid var(--cyan-soft);color:var(--dim)}
+#sheetActions i.on{border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 14px rgba(0,229,255,.3);background:rgba(0,229,255,.08)}
+#lookCredit{position:absolute;left:0;right:0;bottom:66px;text-align:center;font-size:15px;color:var(--dim);pointer-events:none}
+
+/* ---------- menu, radar, saved, compare ---------- */
+.layer{position:absolute;inset:0;background:#000;z-index:40;visibility:hidden;opacity:0;transition:opacity .2s,visibility .2s}
+.layer.open{visibility:visible;opacity:1}
+.layerTitle{position:absolute;top:14px;left:20px;right:20px;font-size:30px;font-weight:700;display:flex;justify-content:space-between;align-items:baseline}
+.layerTitle small{font-size:18px;font-weight:500;color:var(--dim)}
+.layerHint{position:absolute;left:16px;right:16px;bottom:12px;height:44px;border-radius:22px;background:var(--panel);border:1px solid var(--cyan-soft);padding:0 10px}
+#hubList,#savedList{position:absolute;top:64px;left:16px;right:16px;bottom:66px;overflow-y:auto;scrollbar-width:none}
+#hubList::-webkit-scrollbar,#savedList::-webkit-scrollbar{display:none}
+.row2{border:1px solid var(--cyan-soft);border-radius:20px;padding:12px 18px;margin-bottom:10px;background:rgba(4,13,19,.9)}
+.row2.on{border-color:var(--cyan);box-shadow:0 0 18px rgba(0,229,255,.35);background:rgba(0,229,255,.08)}
+.row2 b{display:block;font-size:26px;font-weight:700}
+.row2 span{display:block;font-size:17px;color:var(--dim);margin-top:2px;word-break:break-word}
+.row2 em{font-style:normal;font-size:17px;font-weight:700;margin-left:8px}
+.row2 em.pin{color:#001014;background:var(--cyan);padding:0 9px;border-radius:9px}
+.row2 em.dr{color:#7dffb0}.row2 em.up{color:var(--amber)}
+#radarSvg{position:absolute;inset:0;width:100%;height:100%}
+#radarInfo{position:absolute;left:16px;right:16px;bottom:62px;height:76px;border-radius:20px;background:var(--panel);border:1px solid var(--cyan-soft);padding:8px 16px;overflow:hidden}
+#radarInfo .p{font-size:26px;font-weight:700;color:var(--cyan);white-space:nowrap}
+#radarInfo .p small{font-size:19px;font-weight:600;color:var(--ink);margin-left:8px}
+#radarInfo .p em{font-style:normal;font-size:17px;color:#7dffb0;margin-left:8px}
+#radarInfo .a{font-size:17px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#cmpBody{position:absolute;top:62px;left:12px;right:12px;bottom:64px}
+.cmp{display:grid;grid-template-columns:118px 1fr 1fr;font-size:20px}
+.cmp>div{padding:5px 8px;border-bottom:1px solid rgba(0,229,255,.14);min-width:0}
+.cmp .h{font-weight:700;font-size:17px;color:var(--cyan);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cmp .k{color:var(--dim);font-size:17px}
+.cmp .best{color:#7dffb0;font-weight:700}
+
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -184,6 +221,7 @@ body{display:flex;align-items:center;justify-content:center}
   <section id="card" class="hide" tabindex="0" aria-live="polite">
     <div id="media">
       <div id="track" tabindex="0"></div>
+      <div class="drop" id="dropBadge"></div>
       <div class="badge" id="badge"></div>
       <div id="dots"></div>
     </div>
@@ -199,6 +237,7 @@ body{display:flex;align-items:center;justify-content:center}
 
     <div id="sheet">
       <div id="sheetHead"></div>
+      <div id="sheetActions"></div>
       <div id="sheetBody" tabindex="0"></div>
       <div id="sheetHint" class="hintbar"></div>
     </div>
@@ -207,9 +246,19 @@ body{display:flex;align-items:center;justify-content:center}
       <canvas id="gl"></canvas>
       <div id="prog"></div>
       <div id="lookTop"><div class="chip tour" id="lookTag">360°</div><div class="chip" id="lookInfo"></div></div>
+      <div id="lookCredit"></div>
       <div id="lookBar"><div class="hintbar" id="lHint"></div></div>
     </div>
   </section>
+
+  <!-- menu, radar, saved list and compare: full-screen layers opened with a swipe up past the nearest listing -->
+  <section id="hub" class="layer"><div class="layerTitle">Menu</div><div id="hubList"></div><div class="hintbar layerHint" id="hubHint"></div></section>
+  <section id="radar" class="layer">
+    <svg id="radarSvg" viewBox="0 0 600 600"></svg>
+    <div id="radarInfo"></div><div class="hintbar layerHint" id="radarHint"></div>
+  </section>
+  <section id="saved" class="layer"><div class="layerTitle" id="savedTitle"></div><div id="savedList"></div><div class="hintbar layerHint" id="savedHint"></div></section>
+  <section id="compare" class="layer"><div class="layerTitle">Compare</div><div id="cmpBody"></div><div class="hintbar layerHint" id="cmpHint"></div></section>
 
   <div id="toast"></div>
 </div>
@@ -318,7 +367,8 @@ const S={
   locked:false,lockT:0,
   fetchCenter:null,fetching:false,offline:false,
   simOn:false,simT:0,simHeading:15,gotFix:false,locErr:null,peekT:0,
-  radius:CONFIG.RADIUS_M
+  radius:CONFIG.RADIUS_M,
+  stack:[],actIdx:0,hubIdx:0,savIdx:0,pins:[],rRange:null,rSel:null,rOrder:[],rmArm:null
 };
 
 /* =====================================================================
@@ -460,6 +510,7 @@ function demoListings(lat,lng){
     media.push(stockPhoto('kitchen',r2,'Kitchen',seed+3,hue));
     if(rnd()>.4) media.push({type:'tour360',kind:'image',src:'proc:'+seed,label:'3D tour'});
     if(CONFIG.DEMO_TOUR_VIDEO) media.push({type:'tour360',kind:'video',src:CONFIG.DEMO_TOUR_VIDEO,label:'3D video tour'});
+    const hist=r2()<0.16?[{date:'Sep 14, 2026',iso:new Date(Date.now()-4*864e5).toISOString().slice(0,10),price,event:'Rental Listing'},{date:'Sep 1, 2026',iso:'2026-09-01',price:price+150,event:'Rental Listing'}]:undefined;
     out.push({
       id:'demo-'+cell+'-'+i, title:`${ADJ[Math.floor(rnd()*ADJ.length)]} ${beds?beds+' bedroom':'studio'}`,
       address:`${num} ${street}, ${city}, NY ${zip}`, lat:p.lat, lng:p.lng, price, beds,
@@ -470,7 +521,7 @@ function demoListings(lat,lng){
       parking:['Street','Garage extra','None'][Math.floor(rnd()*3)],
       description:DESC[Math.floor(rnd()*DESC.length)], amenities:amen,
       contact:{name:['Maya R.','Jon T.','Priya S.','Luis M.'][Math.floor(rnd()*4)],phone:`(555) 01${Math.floor(rnd()*10)}-${1000+Math.floor(rnd()*9000)}`},
-      media
+      media, history:hist
     });
   }
   return out;
@@ -519,7 +570,7 @@ async function loadListings(){
   if(S.fetching||!S.pos) return;
   S.fetching=true;
   const {lat,lng}=S.pos; S.fetchCenter={lat,lng};
-  const add=items=>{items.forEach(l=>S.listings.set(l.id,l)); tick();};
+  const add=items=>{markSeen(items);items.forEach(l=>S.listings.set(l.id,l)); tick();};
   try{
     if(CONFIG.API_URL) await fromApi(lat,lng,add); else add(demoListings(lat,lng));
     S.offline=false;
@@ -612,7 +663,7 @@ function tick(){
     else if(!S.cur) showListing(best);
     else if(best.l.id!==S.cur.id&&(curRec.d>S.radius||best.d+CONFIG.HYSTERESIS_M<curRec.d)) showListing(best);
   }
-  updateLive(); setEmpty();
+  updateLive(); setEmpty(); refreshLayers();
 }
 function setEmpty(){
   if(S.cur){el.empty.classList.add('gone');return;}
@@ -625,6 +676,7 @@ function updateLive(){
   const n=S.recs.length;
   const pre=S.locked?'Browsing ':'';
   if(!S.cur){el.countTxt.textContent=n+' nearby';return;}
+  if(!S.pos) return;
   const r=recFor(S.cur), i=S.recs.findIndex(x=>x.l.id===S.cur.id);
   el.countTxt.textContent=pre+(i>=0?`${i+1} of ${n}`:`${n} nearby`);
   const d=$('dTxt'),w=$('dDir'),a=$('arrow');
@@ -650,6 +702,7 @@ function showListing(rec){
     <div class="specs">${specsHTML(l,false)}</div>
     <div class="addr">${esc(l.address||l.title||'')}</div>`;
   applyStreet(l); buildStrip(l);
+  { const dr=priceDrop(l); el.dropBadge.textContent=dr?'↓ '+money(dr.amount):''; }
   el.card.classList.remove('hide','in'); void el.card.offsetWidth; el.card.classList.add('in');
   renderHints(); updateLive(); wake(); fetchStreet(l);
   if(!S.hinted){S.hinted=true;hintPop(4000);}
@@ -657,19 +710,20 @@ function showListing(rec){
 // Real street-level photo of the building (Mapillary, via the Worker), shown first when one exists
 const apiBase=()=>CONFIG.API_URL?CONFIG.API_URL.replace(/\/listings\/?$/,''):'';
 function applyStreet(l){
-  const j=l.street; if(!j||!j.url||(l.media[0]&&l.media[0].real)) return;
-  l.media=[{type:'photo',src:j.url,thumb:j.url,label:'Street photo'+(j.capturedAt?', '+new Date(j.capturedAt).getUTCFullYear():''),credit:'Photo: '+j.credit,real:true},...l.media];
+  const add=[];
+  if(l.street&&l.street.url&&!l.media.some(m=>m.real&&!m.pano))
+    add.push({type:'photo',src:l.street.url,thumb:l.street.url,label:'Street photo'+(l.street.capturedAt?', '+new Date(l.street.capturedAt).getUTCFullYear():''),credit:'Photo: '+l.street.credit,real:true});
+  if(l.pano&&l.pano.url&&!l.media.some(m=>m.pano))
+    add.push({type:'tour360',kind:'image',src:l.pano.url,thumb:l.pano.thumb||l.pano.url,label:'Street 360°',credit:'Photo: '+l.pano.credit,real:true,pano:true});
+  if(add.length) l.media=[...add,...l.media];
 }
 async function fetchStreet(l){
-  if(!CONFIG.API_URL||l.street!==undefined||String(l.id).startsWith('demo-')) return;
-  l.street=null;
-  try{
-    const r=await fetch(`${apiBase()}/streetphoto?lat=${l.lat.toFixed(6)}&lng=${l.lng.toFixed(6)}`);
-    if(!r.ok) return;
-    const j=await r.json(); if(!j.url) return;
-    l.street=j;
-    if(S.cur&&S.cur.id===l.id&&S.view==='card'){applyStreet(l);buildStrip(l);}
-  }catch(e){}
+  if(!CONFIG.API_URL||l._sp||String(l.id).startsWith('demo-')) return;
+  l._sp=true;
+  const q=`lat=${l.lat.toFixed(6)}&lng=${l.lng.toFixed(6)}`, get=p=>fetch(`${apiBase()}/${p}?${q}`).then(r=>r.ok?r.json():null).catch(()=>null);
+  const [ph,pa]=await Promise.all([get('streetphoto'),get('streetpano')]);
+  if(ph&&ph.url) l.street=ph; if(pa&&pa.url) l.pano=pa;
+  if((l.street||l.pano)&&S.cur&&S.cur.id===l.id&&S.view==='card'){applyStreet(l);buildStrip(l);}
 }
 function mkVideo(m,strip){
   const v=document.createElement('video');
@@ -742,12 +796,13 @@ function hintPop(ms){el.hint.classList.add('on');clearTimeout(hintT);hintT=setTi
    ===================================================================== */
 const H=(k,t)=>`<span><b>${k}</b>${t}</span>`;
 function renderHints(){
-  el.hint.innerHTML=H('◀ ▶','Media')+H('▲ ▼','Listings')+H('Pinch','Open');
+  const first=!S.cur||S.recs.findIndex(r=>r.l.id===S.cur.id)<=0;
+  el.hint.innerHTML=H('◀ ▶','Media')+(first?H('▲','Menu')+H('▼','Next'):H('▲ ▼','Listings'))+H('Pinch','Open');
   if(!S.cur) return;
   const m=S.cur.media[S.vIdx]||S.cur.media[0];
   const act=m.type==='video'?'Play/pause':m.type==='tour360'?'Look around':(el.viewer.classList.contains('clean')?'Show info':'Hide info');
   el.vHint.innerHTML=H('◀ ▶','Browse')+H('▲','Close')+H('▼','Details')+H('Pinch',act);
-  el.sheetHint.innerHTML=H('▲ ▼','Scroll')+H('Back','Close');
+  el.sheetHint.innerHTML=H('◀ ▶','Action')+H('Pinch','Do it')+H('▲ ▼','Scroll');
   const vid=m.kind==='video';
   el.lHint.innerHTML=H('◀ ▶','Turn')+H('▼','Tilt')+H('▲','Exit')+H('Pinch',vid?'Play/pause':'Auto-turn');
 }
@@ -765,7 +820,7 @@ function openViewer(i){
   const l=S.cur;
   el.vPrice.innerHTML=`${money(l.price)}<small>/mo</small>`; el.vSpecs.textContent=specsShort(l);
   el.sheetHead.innerHTML=`<div class="price">${money(l.price)}<small>/mo</small></div><div class="specs">${specsHTML(l,true)}</div><div class="addr">${esc(l.address||'')}</div>`;
-  el.sheetBody.innerHTML=detailsHTML(l); el.sheetBody.scrollTop=0;
+  el.sheetBody.innerHTML=detailsHTML(l); el.sheetBody.scrollTop=0; S.actIdx=0; renderActions();
   el.sheet.classList.remove('open'); el.viewer.classList.remove('sheetopen','clean');
   buildViewer(l);
   el.viewer.classList.add('open');
@@ -789,8 +844,9 @@ const gridHTML=rows=>rows.length?`<div class="grid">${rows.map(r=>`<div${r[2]?' 
 function detailsHTML(l){
   const sample=String(l.id).startsWith('demo-')?'<p style="color:var(--amber);margin-top:12px">Sample listing for the demo. Not a real apartment; photos are stock images.</p>':'';
   const stock=(!sample&&(l.media||[]).some(m=>m.stock)?'<p style="color:var(--amber);margin-top:12px">Photos marked Sample are stock images, not this apartment.</p>':'')
-    +(l.street&&l.street.url?`<p style="margin-top:12px">Street photo by Mapillary contributors (CC BY-SA 4.0), taken about ${l.street.distanceM} m away${l.street.capturedAt?' in '+new Date(l.street.capturedAt).getUTCFullYear():''}. It may be out of date.</p>`:'');
-  const chips=[l.days!=null&&l.days<=7?'New':'',l.type||'',l.days!=null?(l.days===0?'Listed today':l.days+' day'+(l.days===1?'':'s')+' listed'):''].filter(Boolean);
+    +((l.street&&l.street.url)||(l.pano&&l.pano.url)?'<p style="margin-top:12px">Street photos by Mapillary contributors (CC BY-SA 4.0). They may be out of date.</p>':'');
+  const dr=priceDrop(l);
+  const chips=[dr?dropText(dr):'',l.days!=null&&l.days<=7?'New':'',l.type||'',l.days!=null?(l.days===0?'Listed today':l.days+' day'+(l.days===1?'':'s')+' listed'):''].filter(Boolean);
   const basics=[['Available',l.available],['Lease',l.lease],['Deposit',l.deposit],['Pets',l.pets],['Laundry',l.laundry],['Floor',l.floor],['Parking',l.parking]].filter(r=>r[1]);
   const facts=(l.facts||[]).filter(f=>!/^days on market$/i.test(f[0]));
   const contacts=(l.contacts&&l.contacts.length?l.contacts:(l.contact?[{role:'Contact',name:l.contact.name,phone:l.contact.phone}]:[]))
@@ -818,7 +874,8 @@ function fillSlide(i){
   const s=el.vTrack.children[i]; if(!s||s.dataset.ready) return; s.dataset.ready='1';
   const m=S.cur.media[i];
   if(m.type==='video'){const v=mkVideo(m,false); v.onerror=()=>s.classList.add('bad'); s.appendChild(v);}
-  else if(m.type==='tour360'){s.appendChild(tourPreview(m,true)); const p=mk('div','pill'); p.textContent='Pinch to look around'; s.appendChild(p);}
+  else if(m.type==='tour360'){s.appendChild(tourPreview(m,true)); const p=mk('div','pill'); p.textContent='Pinch to look around'; s.appendChild(p);
+    if(m.credit){const c=mk('div','cap');c.textContent=m.credit;c.style.cssText='left:50%;transform:translateX(-50%);bottom:auto;top:58px;white-space:nowrap;font-size:15px';s.appendChild(c);}}
   else{
     const ld=mk('div','load'); ld.textContent='Loading…'; s.appendChild(ld);
     const im=new Image(); im.decoding='async'; im.alt=m.label||'';
@@ -924,7 +981,7 @@ async function enterLook(){
   const m=S.cur.media[S.vIdx]; if(m.type!=='tour360') return;
   if(!glInit()){toast('3D view isn’t supported here');return;}
   S.view='look'; pushView(); const tok=++T.token;
-  el.look.classList.add('open'); el.lookInfo.textContent=m.label||'3D tour'; el.prog.style.width='0';
+  el.look.classList.add('open'); el.lookInfo.textContent=m.label||'3D tour'; el.lookCredit.textContent=m.credit||''; el.prog.style.width='0';
   T.yaw=T.ty=T.pitch=T.tp=0; T.tiltStep=0; T.spin=m.kind!=='video'; T.ready=false; T.lastT=-1; T.video=null;
   toast('Loading tour…',true);
   try{
@@ -966,7 +1023,7 @@ function exitLook(fromPop){
   T.token++; cancelAnimationFrame(T.raf);
   if(T.video){T.video.pause();T.video.removeAttribute('src');T.video.load();T.video=null;}
   if(T.gl&&T.tex){T.gl.deleteTexture(T.tex);T.tex=null;}
-  T.src=null; T.ready=false; el.look.classList.remove('open'); toast('');
+  T.src=null; T.ready=false; el.look.classList.remove('open'); el.lookCredit.textContent=''; toast('');
   if(S.view==='look'){S.view='viewer'; if(!fromPop) popView();}
   renderHints();
 }
@@ -1030,6 +1087,7 @@ function press(a){
   touchInput();
   if(S.view==='look') return lookPress(a);
   if(S.view==='viewer') return viewerPress(a);
+  if(LAYERS[S.view]) return layerPress(a);
   if(S.cur&&el.card.classList.contains('peek')&&a!=='back'){wake();hintPop();return;}   // first touch only expands the tile
   wake(); if(S.cur&&a!=='ok') hintPop();
   cardPress(a);
@@ -1037,7 +1095,8 @@ function press(a){
 function cardPress(a){
   switch(a){
     case 'L': stripGo(-1);break;   case 'R': stripGo(1);break;
-    case 'U': listingGo(-1);break; case 'D': listingGo(1);break;
+    case 'U': { const i=S.cur?S.recs.findIndex(r=>r.l.id===S.cur.id):-1; if(i<=0) openLayer('hub'); else listingGo(-1); break; }
+    case 'D': listingGo(1);break;
     case 'ok': if(S.cur) openViewer(S.mediaIdx);break;
     case 'back': if(S.locked) unlock(); else bump('y');break;
   }
@@ -1045,12 +1104,12 @@ function cardPress(a){
 function viewerPress(a){
   const sb=el.sheetBody;
   switch(a){
-    case 'L': if(S.sheet) setSheet(false); vGo(-1);break;
-    case 'R': if(S.sheet) setSheet(false); vGo(1);break;
+    case 'L': if(S.sheet){S.actIdx=Math.max(0,S.actIdx-1);renderActions();break;} vGo(-1);break;
+    case 'R': if(S.sheet){S.actIdx=Math.min(ACTS.length-1,S.actIdx+1);renderActions();break;} vGo(1);break;
     case 'D': if(!S.sheet) setSheet(true); else sb.scrollBy({top:150,behavior:'smooth'});break;
     case 'U': if(S.sheet){ if(sb.scrollTop<=2) setSheet(false); else sb.scrollBy({top:-150,behavior:'smooth'}); } else closeViewer(); break;
     case 'ok': {
-      if(S.sheet){setSheet(false);break;}
+      if(S.sheet){doAction();break;}
       const m=S.cur.media[S.vIdx];
       if(m.type==='tour360') enterLook();
       else if(m.type==='video'){const v=el.vTrack.children[S.vIdx].querySelector('video'); if(v){ if(v.paused){v.play().catch(()=>{});toast('Playing');}else{v.pause();toast('Paused');} }}
@@ -1082,6 +1141,7 @@ addEventListener('popstate',()=>{
   if(hist>0) hist--;
   if(S.view==='look') exitLook(true);
   else if(S.view==='viewer'){ if(S.sheet){setSheet(false);pushView();} else closeViewer(true); }
+  else if(LAYERS[S.view]) closeLayer(true);
 });
 
 let wheelT=0;
@@ -1114,10 +1174,255 @@ addEventListener('load',()=>el.card.focus({preventScroll:true}));
 document.addEventListener('visibilitychange',()=>{ if(document.hidden){
   document.querySelectorAll('video').forEach(v=>v.pause()); }});
 
+/* =====================================================================
+   Saved + compare, price drops, radar, menu, send to phone
+   ===================================================================== */
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
+const LAYERS={hub:1,radar:1,saved:1,compare:1};
+const ly={hub:$('hub'),radar:$('radar'),saved:$('saved'),compare:$('compare')};
+Object.assign(el,{sheetActions:$('sheetActions'),lookCredit:$('lookCredit'),dropBadge:$('dropBadge'),hubList:$('hubList'),hubHint:$('hubHint'),
+  radarSvg:$('radarSvg'),radarInfo:$('radarInfo'),radarHint:$('radarHint'),savedTitle:$('savedTitle'),savedList:$('savedList'),savedHint:$('savedHint'),cmpBody:$('cmpBody'),cmpHint:$('cmpHint')});
+const apiHost=()=>apiBase().replace(/^https?:\/\//,'');
+
+/* ----- pairing with your phone: /phone on the Worker makes the code; opening the link it shows once stores it here ----- */
+function initPair(){
+  const p=Q.get('pair');
+  if(p==='clear') LS.set('rw_pair','');
+  else if(p&&/^[A-Za-z0-9]{10,40}$/.test(p)) LS.set('rw_pair',p);
+}
+const pairCode=()=>LS.get('rw_pair','')||'';
+const forPhone=l=>({id:l.id,title:l.title,address:l.address,lat:l.lat,lng:l.lng,price:l.price,beds:l.beds,baths:l.baths,sqft:l.sqft,type:l.type,days:l.days,contacts:l.contacts,contact:l.contact,savedAt:l.savedAt});
+async function sendToPhone(l){
+  const code=pairCode();
+  if(!CONFIG.API_URL){toast('Sending needs your real listings feed');return;}
+  if(!code){toast('Pair first: open '+apiHost()+'/phone on your phone',false);return;}
+  toast('Sending…',true);
+  try{
+    const r=await fetch(`${apiBase()}/sync/send?code=${code}`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({listing:forPhone(l)})});
+    toast(r.ok?'Sent to your phone':'Could not send');
+  }catch(e){toast('Could not send');}
+}
+function syncSaved(){
+  const code=pairCode(); if(!code||!CONFIG.API_URL) return;
+  fetch(`${apiBase()}/sync/saved?code=${code}`,{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({saved:savedList().map(forPhone)})}).catch(()=>{});
+}
+
+/* ----- saved listings (kept on the glasses) ----- */
+const compact=l=>({id:l.id,title:l.title,address:l.address,lat:l.lat,lng:l.lng,price:l.price,beds:l.beds,baths:l.baths,sqft:l.sqft,type:l.type,days:l.days,
+  facts:(l.facts||[]).slice(0,14),contacts:l.contacts,contact:l.contact,history:l.history,amenities:l.amenities,description:l.description});
+const savedList=()=>LS.get('rw_saved',[]);
+const isSaved=id=>savedList().some(x=>x.id===id);
+function removeSaved(id){
+  const a=savedList().filter(x=>x.id!==id); LS.set('rw_saved',a); S.pins=S.pins.filter(p=>p!==id); syncSaved();
+}
+function toggleSave(l){
+  if(isSaved(l.id)){removeSaved(l.id);toast('Removed from saved');}
+  else{LS.set('rw_saved',[{...compact(l),savedAt:Date.now(),savedPrice:l.price},...savedList()].slice(0,30));toast('Saved');syncSaved();}
+  renderActions();
+}
+const ACTS=[{id:'save'},{id:'send'}];
+const actLabel=(a,l)=>a.id==='save'?(isSaved(l.id)?'Remove from saved':'Save this'):'Send to phone';
+function renderActions(){
+  if(!S.cur) return;
+  el.sheetActions.innerHTML=ACTS.map((a,i)=>`<i class="${i===S.actIdx?'on':''}">${actLabel(a,S.cur)}</i>`).join('');
+}
+function doAction(){ if(ACTS[S.actIdx].id==='save') toggleSave(S.cur); else sendToPhone(S.cur); }
+
+/* ----- price drops: from the listing's own rent history, else "lower than when you last looked" ----- */
+function priceDrop(l){
+  const h=l.history||[], i=h.findIndex(e=>e.price===l.price);
+  if(i>=0){
+    const prev=h.slice(i+1).find(e=>e.price!==l.price);
+    if(prev&&prev.price>l.price){
+      const iso=h[i].iso, age=iso?(Date.now()-Date.parse(iso))/864e5:0;
+      if(!iso||age<=90) return {amount:prev.price-l.price,pct:Math.round((1-l.price/prev.price)*100),since:h[i].date,src:'history'};
+    }
+  }
+  if(l.seenDrop) return {amount:l.seenDrop.amount,pct:Math.round(l.seenDrop.amount/(l.price+l.seenDrop.amount)*100),since:null,src:'seen'};
+  return null;
+}
+const dropText=d=>d?`Down ${money(d.amount)}${d.pct?` (${d.pct}%)`:''}${d.since?' since '+d.since:d.src==='seen'?' since you last looked':''}`:'';
+function markSeen(items){
+  const seen=LS.get('rw_seen',{}), now=Date.now(); let changed=false;
+  for(const l of items){
+    const r=seen[l.id];
+    if(r&&now-r.t<21*864e5){
+      if(l.price<r.p) l.seenDrop={amount:r.p-l.price};
+      else if(l.price>r.p){seen[l.id]={p:l.price,t:now};changed=true;}
+    }else{seen[l.id]={p:l.price,t:now};changed=true;}
+  }
+  if(changed){
+    const ids=Object.keys(seen);
+    if(ids.length>800) ids.sort((a,b)=>seen[a].t-seen[b].t).slice(0,ids.length-800).forEach(k=>delete seen[k]);
+    LS.set('rw_seen',seen);
+  }
+}
+
+/* ----- layers: menu > radar / saved > compare ----- */
+const renderers={hub:()=>renderHub(),radar:()=>renderRadar(),saved:()=>renderSaved(),compare:()=>renderCompare()};
+function openLayer(name){
+  if(S.view!=='card'){S.stack.push(S.view); if(ly[S.view]) ly[S.view].classList.remove('open');}
+  S.view=name; pushView(); ly[name].classList.add('open'); renderers[name]();
+  clearTimeout(S.peekT); el.hint.classList.remove('on');
+}
+function closeLayer(fromPop){
+  if(ly[S.view]) ly[S.view].classList.remove('open');
+  const prev=S.stack.pop()||'card'; S.view=prev; if(!fromPop) popView();
+  if(prev==='card'){wake();tick();renderHints();}
+  else{ly[prev].classList.add('open');renderers[prev]();}
+}
+function closeAllLayers(){ while(LAYERS[S.view]) closeLayer(false); }
+function openListing(l){   // leave the menus and show this listing on the tile
+  closeAllLayers();
+  const f={...(S.listings.get(l.id)||l)}; if(!f.media||!f.media.length) f.media=stockMedia(f);
+  touchInput(); showListing(S.pos?recFor(f):{l:f,d:0,b:0});
+}
+function refreshLayers(){ if(S.view==='radar') renderRadar(); else if(S.view==='saved') renderSaved(); }
+function layerPress(a){ ({hub:hubPress,radar:radarPress,saved:savedPress,compare:comparePress})[S.view](a); }
+
+/* menu */
+const hubRows=()=>[
+  {t:'Radar',s:'See every listing around you'},
+  {t:`Saved (${savedList().length})`,s:'Your favorites, and compare two'},
+  {t:pairCode()?'Phone paired':'Pair your phone',s:CONFIG.API_URL?(pairCode()?'Listings you send show up at '+apiHost()+'/phone':'On your phone, open '+apiHost()+'/phone'):'Needs your real listings feed'},
+  {t:'Close menu',s:'Back to the listing'}
+];
+function renderHub(){
+  el.hubList.innerHTML=hubRows().map((r,i)=>`<div class="row2${i===S.hubIdx?' on':''}"><b>${esc(r.t)}</b><span>${esc(r.s)}</span></div>`).join('');
+  el.hubHint.innerHTML=H('▲ ▼','Move')+H('Pinch','Choose')+H('◀','Close');
+}
+function hubPress(a){
+  const n=hubRows().length;
+  if(a==='U') S.hubIdx=(S.hubIdx+n-1)%n;
+  else if(a==='D') S.hubIdx=(S.hubIdx+1)%n;
+  else if(a==='L'||a==='back') return closeLayer(false);
+  else if(a==='ok'){
+    if(S.hubIdx===0) return openLayer('radar');
+    if(S.hubIdx===1) return openLayer('saved');
+    if(S.hubIdx===2){toast(pairCode()?'Already paired':'Open that address on your phone');return;}
+    return closeLayer(false);
+  }
+  renderHub();
+}
+
+/* radar: everything around you on one screen */
+const RANGES=[400,800,1600,3200];
+function medianByBeds(){
+  const m=new Map();
+  for(const l of S.listings.values()){ if(!(l.price>0)) continue; const k=l.beds==null?'x':l.beds; if(!m.has(k)) m.set(k,[]); m.get(k).push(l.price); }
+  const out=new Map(); for(const [k,v] of m){v.sort((a,b)=>a-b);out.set(k,v[Math.floor(v.length/2)]);} return out;
+}
+const dotColor=(l,med)=>{const m=med.get(l.beds==null?'x':l.beds); if(!m) return '#e9fbff'; const p=l.price/m-1; return p<-0.08?'#4ade80':p>0.08?'#ffb224':'#e9fbff';};
+function renderRadar(){
+  if(S.rRange==null){S.rRange=RANGES.findIndex(r=>r>=S.radius); if(S.rRange<0) S.rRange=RANGES.length-1;}
+  const range=RANGES[S.rRange], cx=300, cy=262, R=196, head=S.heading;
+  const items=[];
+  if(S.pos) for(const l of S.listings.values()){const r=recFor(l); if(r.d<=range) items.push(r);}
+  items.sort((a,b)=>a.d-b.d); items.length=Math.min(items.length,80);
+  const med=medianByBeds(), saved=new Set(savedList().map(x=>x.id));
+  const pts=items.map(r=>{const rel=(((r.b-(head||0))%360)+360)%360, k=R*(r.d/range);
+    return {r,rel,x:cx+k*Math.sin(rel*Math.PI/180),y:cy-k*Math.cos(rel*Math.PI/180)};});
+  S.rOrder=[...pts].sort((a,b)=>a.rel-b.rel).map(p=>p.r.l.id);
+  if(!S.rOrder.includes(S.rSel)) S.rSel=(S.cur&&S.rOrder.includes(S.cur.id))?S.cur.id:(pts.length?[...pts].sort((a,b)=>a.r.d-b.r.d)[0].r.l.id:null);
+  let g=`<g fill="none" stroke="rgba(0,229,255,.28)" stroke-width="1.5"><circle cx="${cx}" cy="${cy}" r="${R}"/><circle cx="${cx}" cy="${cy}" r="${R*2/3}"/><circle cx="${cx}" cy="${cy}" r="${R/3}"/><path d="M${cx} ${cy-R}V${cy+R}M${cx-R} ${cy}H${cx+R}" stroke-dasharray="3 7"/></g>`;
+  g+=[1/3,2/3,1].map(k=>`<text x="${cx+8}" y="${cy-R*k+17}" fill="#86aab4" font-size="15">${fmtDist(range*k)}</text>`).join('');
+  g+=`<text x="${cx}" y="${cy-R-8}" fill="#86aab4" font-size="17" text-anchor="middle">${head==null?'N':'ahead'}</text>`;
+  let sel='';
+  for(const p of pts){
+    const l=p.r.l, isSel=l.id===S.rSel, col=dotColor(l,med);
+    let s=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${isSel?9:6}" fill="${col}"/>`;
+    if(priceDrop(l)) s+=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${isSel?14:10}" fill="none" stroke="#7dffb0" stroke-width="2.5"/>`;
+    if(saved.has(l.id)) s+=`<path d="M${p.x.toFixed(1)} ${(p.y-14).toFixed(1)}L${(p.x+10).toFixed(1)} ${p.y.toFixed(1)}L${p.x.toFixed(1)} ${(p.y+14).toFixed(1)}L${(p.x-10).toFixed(1)} ${p.y.toFixed(1)}Z" fill="none" stroke="#00e5ff" stroke-width="2"/>`;
+    if(isSel) sel=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="20" fill="none" stroke="#00e5ff" stroke-width="3.5"/>`;
+    g+=s;
+  }
+  g+=sel;
+  g+=head==null?`<circle cx="${cx}" cy="${cy}" r="7" fill="#00e5ff"/>`:`<path d="M${cx} ${cy-12}L${cx+9} ${cy+10}L${cx} ${cy+5}L${cx-9} ${cy+10}Z" fill="#00e5ff"/>`;
+  g+=`<text x="20" y="34" fill="#e9fbff" font-size="21" font-weight="700">Range ${fmtDist(range)}</text>`;
+  g+=`<g font-size="15" fill="#86aab4"><circle cx="352" cy="28" r="6" fill="#4ade80"/><text x="364" y="33">cheaper</text><circle cx="440" cy="28" r="6" fill="#e9fbff"/><text x="452" y="33">typical</text><circle cx="518" cy="28" r="6" fill="#ffb224"/><text x="530" y="33">pricier</text></g>`;
+  if(!pts.length) g+=`<text x="${cx}" y="${cy}" fill="#86aab4" font-size="22" text-anchor="middle">No listings in this range</text>`;
+  el.radarSvg.innerHTML=g;
+  const sp=pts.find(p=>p.r.l.id===S.rSel);
+  if(sp){
+    const l=sp.r.l, dr=priceDrop(l);
+    el.radarInfo.innerHTML=`<div class="p">${money(l.price)}<small>${esc(specsShort(l))}</small>${dr?`<em>↓ ${money(dr.amount)}</em>`:''}</div><div class="a">${fmtDist(sp.r.d)} ${esc(direction(sp.r.b))}, ${esc(l.address||'')}</div>`;
+  }else el.radarInfo.innerHTML=`<div class="a" style="font-size:20px;margin-top:14px">${S.pos?'Swipe down to widen the range.':'Waiting for your location.'}</div>`;
+  el.radarHint.innerHTML=H('◀ ▶','Select')+H('▲ ▼','Range')+H('Pinch','Open');
+}
+function radarPress(a){
+  if(a==='U') S.rRange=Math.max(0,S.rRange-1);
+  else if(a==='D') S.rRange=Math.min(RANGES.length-1,S.rRange+1);
+  else if(a==='L'||a==='R'){const o=S.rOrder||[]; if(o.length){const i=Math.max(0,o.indexOf(S.rSel)); S.rSel=o[(i+(a==='R'?1:-1)+o.length)%o.length];}}
+  else if(a==='ok'){const l=S.listings.get(S.rSel); return l?openListing(l):closeLayer(false);}
+  else if(a==='back') return closeLayer(false);
+  renderRadar();
+}
+
+/* saved list + compare */
+function renderSaved(){
+  const a=savedList();
+  el.savedTitle.innerHTML=`Saved<small>${a.length}${S.pins.length?`, ${S.pins.length} pinned`:''}</small>`;
+  if(!a.length){
+    el.savedList.innerHTML='<div class="row2"><b>Nothing saved yet</b><span>Open a listing, swipe down for details, and choose Save this.</span></div>';
+    el.savedHint.innerHTML=H('Any swipe','Close'); return;
+  }
+  S.savIdx=clamp(S.savIdx,0,a.length-1);
+  el.savedList.innerHTML=a.map((x,i)=>{
+    const f=S.listings.get(x.id), price=f?f.price:x.price, delta=f&&x.savedPrice!=null?f.price-x.savedPrice:0;
+    const d=S.pos&&isFinite(x.lat)?fmtDist(dist(S.pos.lat,S.pos.lng,x.lat,x.lng)):'', pin=S.pins.indexOf(x.id), dr=priceDrop(f||x);
+    return `<div class="row2${i===S.savIdx?' on':''}"><b>${money(price)}${pin>=0?`<em class="pin">${'AB'[pin]}</em>`:''}${dr?`<em class="dr">↓ ${money(dr.amount)}</em>`:''}${delta?`<em class="${delta<0?'dr':'up'}">${delta<0?'↓':'↑'} ${money(Math.abs(delta))} since saved</em>`:''}</b><span>${esc(specsShort(x))}${d?', '+d:''}</span><span>${esc(x.address||'')}</span></div>`;
+  }).join('');
+  const rowEl=el.savedList.children[S.savIdx]; if(rowEl&&rowEl.scrollIntoView) rowEl.scrollIntoView({block:'nearest'});
+  el.savedHint.innerHTML=S.pins.length===2?H('Pinch','Compare')+H('▶','Unpin')+H('◀','Remove')+H('▲ ▼','Move'):H('▲ ▼','Move')+H('▶','Pin')+H('◀','Remove')+H('Pinch','Open');
+}
+function savedPress(a){
+  const list=savedList();
+  if(!list.length) return closeLayer(false);
+  const cur=list[S.savIdx];
+  if(a==='D') S.savIdx=Math.min(list.length-1,S.savIdx+1);
+  else if(a==='U'){ if(S.savIdx===0) return closeLayer(false); S.savIdx--; }
+  else if(a==='R'){ const i=S.pins.indexOf(cur.id); if(i>=0) S.pins.splice(i,1); else{S.pins.push(cur.id); if(S.pins.length>2) S.pins.shift();} }
+  else if(a==='L'){
+    const now=Date.now();
+    if(S.rmArm&&S.rmArm.id===cur.id&&now-S.rmArm.t<2500){removeSaved(cur.id);S.rmArm=null;S.savIdx=Math.max(0,Math.min(S.savIdx,list.length-2));toast('Removed');}
+    else{S.rmArm={id:cur.id,t:now};toast('Swipe left again to remove');}
+  }
+  else if(a==='ok'){ return S.pins.length===2?openLayer('compare'):openListing(cur); }
+  else if(a==='back') return closeLayer(false);
+  renderSaved();
+}
+function renderCompare(){
+  const items=S.pins.map(id=>{const x=savedList().find(s=>s.id===id), f=S.listings.get(id); return x&&{...x,...(f?{price:f.price,days:f.days,history:f.history,seenDrop:f.seenDrop}:{})};}).filter(Boolean);
+  if(items.length<2){el.cmpBody.innerHTML='<div class="row2"><b>Pin two saved listings</b><span>Use ▶ on the saved list.</span></div>';el.cmpHint.innerHTML=H('Pinch','Back');return;}
+  const dm=x=>S.pos&&isFinite(x.lat)?dist(S.pos.lat,S.pos.lng,x.lat,x.lng):null;
+  const rows=[
+    ['Rent',x=>x.price,v=>money(v)+'/mo','low'],
+    ['Bedrooms',x=>x.beds,v=>v===0?'Studio':String(v),'high'],
+    ['Baths',x=>x.baths,v=>String(v),'high'],
+    ['Size',x=>x.sqft,v=>v.toLocaleString('en-US')+' ft²','high'],
+    ['Per sq ft',x=>x.sqft&&x.price?x.price/x.sqft:null,v=>'$'+v.toFixed(2),'low'],
+    ['Distance',dm,v=>fmtDist(v),'low'],
+    ['Listed',x=>x.days,v=>v===0?'Today':v+' days','none'],
+    ['Type',x=>x.type||null,v=>v,'none'],
+    ['Price drop',x=>{const d=priceDrop(x);return d?d.amount:null;},v=>'↓ '+money(v),'high']
+  ];
+  const short=x=>(x.address||'').split(',')[0];
+  let h=`<div class="cmp"><div class="h"></div><div class="h">A ${esc(short(items[0]))}</div><div class="h">B ${esc(short(items[1]))}</div>`;
+  for(const [label,get,fmt,mode] of rows){
+    const va=get(items[0]), vb=get(items[1]);
+    if(va==null&&vb==null) continue;
+    const win=mode!=='none'&&va!=null&&vb!=null&&va!==vb?((mode==='low'?va<vb:va>vb)?0:1):-1;
+    h+=`<div class="k">${label}</div><div class="${win===0?'best':''}">${va==null?'-':esc(fmt(va))}</div><div class="${win===1?'best':''}">${vb==null?'-':esc(fmt(vb))}</div>`;
+  }
+  el.cmpBody.innerHTML=h+'</div>';
+  el.cmpHint.innerHTML=H('Pinch','Back to list')+H('Green','Better');
+}
+function comparePress(a){ closeLayer(false); }
+
 if(Q.get('debug')) window.__rw={S,CONFIG};
 
 /* ---------- go ---------- */
-setGpsChip(); setMode(); startGPS();
+initPair(); setGpsChip(); setMode(); startGPS();
 })();
 </script>
 </body>
