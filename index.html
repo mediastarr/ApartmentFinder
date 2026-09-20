@@ -254,7 +254,7 @@ body{display:flex;align-items:center;justify-content:center}
 
 const Q=new URLSearchParams(location.search);
 // Paste your Worker URL here to use real listings, e.g. 'https://rentwalk-api.YOURNAME.workers.dev/listings'
-const DEFAULT_API='';
+const DEFAULT_API='https://rentwalk-api.mediastarr86.workers.dev/listings';
 const CONFIG={
   API_URL:Q.get('api')||DEFAULT_API,
   RADIUS_M:+(Q.get('r')||800),          // listings inside this distance are browsable (about half a mile)
