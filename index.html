@@ -328,6 +328,9 @@ function hashStr(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt
 
 function scene(kind,hue,seed){
   const r=mulberry32(seed),W=640,H=400;let g='';
+  if(kind==='none'){ // plain tile for real listings that have no photos yet
+    return 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}"><rect width="${W}" height="${H}" fill="#071219"/><g fill="none" stroke="#2b5a66" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"><path d="M240 210 320 140 400 210V280H240Z"/><path d="M300 280V235H340V280"/></g></svg>`);
+  }
   const sky=`<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="hsl(${hue} 42% 20%)"/><stop offset="1" stop-color="hsl(${hue+18} 38% 7%)"/></linearGradient></defs><rect width="${W}" height="${H}" fill="url(#g)"/>`;
   if(kind==='exterior'){
     g+=`<circle cx="${110+r()*420}" cy="70" r="28" fill="hsl(${hue+40} 80% 78%)" opacity=".22"/>`;
@@ -481,7 +484,7 @@ const normMedia=m=>{
 const normListing=l=>{
   if(!(l&&l.id!=null&&isFinite(l.lat)&&isFinite(l.lng)&&isFinite(l.price))) return null;
   const media=(Array.isArray(l.media)?l.media:[]).map(normMedia).filter(Boolean);
-  return {...l,id:String(l.id),media:media.length?media:[{type:'photo',src:scene('exterior',200,hashStr(String(l.id))),label:'No photos yet'}]};
+  return {...l,id:String(l.id),media:media.length?media:[{type:'photo',src:scene('none',0,0),label:'No photos yet'}]};
 };
 // Pulls every page (nearest first) and hands each page to onPage as it arrives
 async function fromApi(lat,lng,onPage){
