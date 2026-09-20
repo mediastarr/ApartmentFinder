@@ -173,8 +173,8 @@ body{display:flex;align-items:center;justify-content:center}
 /* ---------- drop badge, sheet actions ---------- */
 .drop{position:absolute;top:10px;left:10px;padding:4px 12px;border-radius:15px;background:#0b3d20;color:#7dffb0;border:1px solid #2fbf71;font-size:17px;font-weight:700;z-index:2}
 .drop:empty{display:none}
-#sheetActions{flex:none;display:flex;gap:10px;padding:10px 22px 8px;border-bottom:1px solid var(--cyan-soft)}
-#sheetActions i{font-style:normal;flex:1;text-align:center;font-size:19px;font-weight:700;padding:9px 6px;border-radius:14px;border:1px solid var(--cyan-soft);color:var(--dim)}
+#sheetActions{flex:none;display:flex;gap:8px;padding:10px 22px 8px;border-bottom:1px solid var(--cyan-soft)}
+#sheetActions i{font-style:normal;flex:1;text-align:center;font-size:16px;font-weight:700;padding:9px 2px;white-space:nowrap;border-radius:14px;border:1px solid var(--cyan-soft);color:var(--dim)}
 #sheetActions i.on{border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 14px rgba(0,229,255,.3);background:rgba(0,229,255,.08)}
 #lookCredit{position:absolute;left:0;right:0;bottom:66px;text-align:center;font-size:15px;color:var(--dim);pointer-events:none}
 
@@ -184,8 +184,8 @@ body{display:flex;align-items:center;justify-content:center}
 .layerTitle{position:absolute;top:14px;left:20px;right:20px;font-size:30px;font-weight:700;display:flex;justify-content:space-between;align-items:baseline}
 .layerTitle small{font-size:18px;font-weight:500;color:var(--dim)}
 .layerHint{position:absolute;left:16px;right:16px;bottom:12px;height:44px;border-radius:22px;background:var(--panel);border:1px solid var(--cyan-soft);padding:0 10px}
-#hubList,#savedList{position:absolute;top:64px;left:16px;right:16px;bottom:66px;overflow-y:auto;scrollbar-width:none}
-#hubList::-webkit-scrollbar,#savedList::-webkit-scrollbar{display:none}
+#hubList,#savedList,#routeList,#sensBody{position:absolute;top:64px;left:16px;right:16px;bottom:66px;overflow-y:auto;scrollbar-width:none}
+#hubList::-webkit-scrollbar,#savedList::-webkit-scrollbar,#routeList::-webkit-scrollbar,#sensBody::-webkit-scrollbar{display:none}
 .row2{border:1px solid var(--cyan-soft);border-radius:20px;padding:12px 18px;margin-bottom:10px;background:rgba(4,13,19,.9)}
 .row2.on{border-color:var(--cyan);box-shadow:0 0 18px rgba(0,229,255,.35);background:rgba(0,229,255,.08)}
 .row2 b{display:block;font-size:26px;font-weight:700}
@@ -193,9 +193,9 @@ body{display:flex;align-items:center;justify-content:center}
 .row2 em{font-style:normal;font-size:17px;font-weight:700;margin-left:8px}
 .row2 em.pin{color:#001014;background:var(--cyan);padding:0 9px;border-radius:9px}
 .row2 em.dr{color:#7dffb0}.row2 em.up{color:var(--amber)}
-#hubList .row2{padding:8px 18px;margin-bottom:8px}
-#hubList .row2 b{font-size:24px}
-#hubList .row2 span{font-size:16px}
+#hubList .row2,#sensBody .row2,#routeList .row2{padding:6px 18px;margin-bottom:7px}
+#hubList .row2 b,#sensBody .row2 b,#routeList .row2 b{font-size:22px}
+#hubList .row2 span,#sensBody .row2 span,#routeList .row2 span{font-size:15px}
 #radarSvg{position:absolute;inset:0;width:100%;height:100%}
 #radarInfo{position:absolute;left:16px;right:16px;bottom:62px;height:76px;border-radius:20px;background:var(--panel);border:1px solid var(--cyan-soft);padding:8px 16px;overflow:hidden}
 #radarInfo .p{font-size:26px;font-weight:700;color:var(--cyan);white-space:nowrap}
@@ -215,6 +215,15 @@ body{display:flex;align-items:center;justify-content:center}
   transition:opacity .25s,transform .25s var(--ease);z-index:45}
 #arrive.on{opacity:1;transform:translate(-50%,0)}
 
+
+/* ---------- compass ribbon, guide, route, sensor check ---------- */
+#ribbon{position:absolute;top:50px;left:16px;width:568px;height:100px;z-index:4;pointer-events:none;display:none}
+#guideSvg{position:absolute;inset:0;width:100%;height:100%}
+#guideInfo{position:absolute;left:16px;right:16px;bottom:62px;height:76px;border-radius:20px;background:var(--panel);border:1px solid var(--cyan-soft);padding:8px 16px;overflow:hidden}
+#guideInfo .p{font-size:26px;font-weight:700;color:var(--cyan);white-space:nowrap}
+#guideInfo .a{font-size:17px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#routeList .row2 em{margin-left:8px}
+
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -225,6 +234,7 @@ body{display:flex;align-items:center;justify-content:center}
     <div class="chip" id="count"><span id="countTxt">0 nearby</span></div>
   </div>
 
+  <svg id="ribbon" viewBox="0 0 568 100"></svg>
   <div id="empty"><div class="ring"></div><div id="emptyTxt">Finding your location…</div></div>
 
   <section id="card" class="hide" tabindex="0" aria-live="polite">
@@ -269,6 +279,9 @@ body{display:flex;align-items:center;justify-content:center}
   <section id="saved" class="layer"><div class="layerTitle" id="savedTitle"></div><div id="savedList"></div><div class="hintbar layerHint" id="savedHint"></div></section>
   <section id="compare" class="layer"><div class="layerTitle">Compare</div><div id="cmpBody"></div><div class="hintbar layerHint" id="cmpHint"></div></section>
 
+  <section id="guide" class="layer"><div class="layerTitle" id="guideTitle">Guide</div><svg id="guideSvg" viewBox="0 0 600 600"></svg><div id="guideInfo"></div><div class="hintbar layerHint" id="guideHint"></div></section>
+  <section id="route" class="layer"><div class="layerTitle" id="routeTitle"></div><div id="routeList"></div><div class="hintbar layerHint" id="routeHint"></div></section>
+  <section id="sensors" class="layer"><div class="layerTitle">Sensor check</div><div id="sensBody"></div><div class="hintbar layerHint" id="sensHint"></div></section>
   <div id="arrive"></div>
   <div id="toast"></div>
 </div>
@@ -328,7 +341,8 @@ const CONFIG={
   SIM_SPEED_MPS:5,
   SIM_START:{lat:+(Q.get('lat')||40.7411),lng:+(Q.get('lng')||-73.9897)},
   FORCE_SIM:Q.get('sim')==='1',
-  ARRIVE_M:+(Q.get('arrive')||25),      // "You're here" banner distance in meters
+  ARRIVE_M:+(Q.get('arrive')||25),
+  RIBBON_M:+(Q.get('ribbon')||600),     // price tags on the compass ribbon up to this far away      // "You're here" banner distance in meters
   STOCK_PHOTOS:Q.get('stock')!=='0',    // stand-in stock photos for listings that have none (?stock=0 turns them off)
   DEMO_TOUR_VIDEO:Q.get('tourvideo')||'',   // optional: add an equirect video tour to every demo listing
   TURN_DEG:30
@@ -357,8 +371,9 @@ const blendAngle=(a,b,t)=>{const d=((b-a+540)%360)-180;return (a+d*t+360)%360;};
 const fmtDist=m=>{const ft=m*3.28084;return ft<1000?Math.max(10,Math.round(ft/10)*10)+' ft':(m/1609.34).toFixed(1)+' mi';};
 const cardinal=b=>['north','northeast','east','southeast','south','southwest','west','northwest'][Math.round(b/45)%8];
 function direction(b){
-  if(S.heading==null) return 'to the '+cardinal(b);
-  const rel=((b-S.heading+540)%360)-180, a=Math.abs(rel), side=rel>0?'right':'left';
+  const h0=hd();
+  if(h0==null) return 'to the '+cardinal(b);
+  const rel=((b-h0+540)%360)-180, a=Math.abs(rel), side=rel>0?'right':'left';
   if(a<25) return 'straight ahead';
   if(a<70) return 'ahead '+side;
   if(a<110) return 'on your '+side;
@@ -380,7 +395,8 @@ const S={
   simOn:false,simT:0,simHeading:15,gotFix:false,locErr:null,peekT:0,
   radius:CONFIG.RADIUS_M,
   stack:[],actIdx:0,hubIdx:0,savIdx:0,pins:[],rRange:null,rSel:null,rOrder:[],rmArm:null,
-  filters:null,filtersOn:true,arriveOn:true,arrived:new Set()
+  filters:null,filtersOn:true,arriveOn:true,arrived:new Set(),
+  ribbonOn:true,guideId:null,guideArrived:0,route:null,routeSel:0,plan:null,offlineUsed:false,offlineAt:0,speed:null
 };
 
 /* =====================================================================
@@ -585,8 +601,8 @@ async function loadListings(){
   const add=items=>{markSeen(items);items.forEach(l=>S.listings.set(l.id,l)); tick();};
   try{
     if(CONFIG.API_URL) await fromApi(lat,lng,add); else add(demoListings(lat,lng));
-    S.offline=false;
-  }catch(e){ S.offline=true; }
+    S.offline=false; S.offlineUsed=false; saveOffline();
+  }catch(e){ S.offline=true; S.offlineUsed=loadOffline(); }
   for(const [id,l] of S.listings){
     if((!S.cur||S.cur.id!==id)&&dist(S.pos.lat,S.pos.lng,l.lat,l.lng)>CONFIG.FETCH_RADIUS_M*2) S.listings.delete(id);
   }
@@ -602,6 +618,7 @@ function onFix(lat,lng,hdg,acc,src){
   if(typeof hdg==='number'&&!isNaN(hdg)) S.heading=hdg;
   else if(prev){const m=dist(prev.lat,prev.lng,lat,lng);
     if(m>4){const b=bearing(prev.lat,prev.lng,lat,lng);S.heading=S.heading==null?b:blendAngle(S.heading,b,.5);}}
+  if(src==='gps'&&S.speed>1.2&&typeof hdg==='number'&&!isNaN(hdg)) calibrate(hdg);
   setGpsChip();
   if(!S.fetchCenter||dist(S.fetchCenter.lat,S.fetchCenter.lng,lat,lng)>CONFIG.REFETCH_M) loadListings();
   tick();
@@ -624,7 +641,7 @@ function startGPS(){
 function watchGPS(demo){
   if(S.watchId!=null) navigator.geolocation.clearWatch(S.watchId);
   S.watchId=navigator.geolocation.watchPosition(
-    p=>{S.gotFix=true;S.locErr=null;onFix(p.coords.latitude,p.coords.longitude,p.coords.heading,p.coords.accuracy,'gps');},
+    p=>{S.gotFix=true;S.locErr=null;S.speed=p.coords.speed;onFix(p.coords.latitude,p.coords.longitude,p.coords.heading,p.coords.accuracy,'gps');},
     err=>{S.locErr=err.code===1?'denied':'unavailable';S.locMsg=err.message||'';setGpsChip();setEmpty(); if(!S.gotFix) useSaved(); if(!S.gotFix&&!S.simOn&&demo) startSim();},
     {enableHighAccuracy:true,maximumAge:2000,timeout:20000});
 }
@@ -648,7 +665,7 @@ function stopSim(){ clearInterval(S.simT); S.simOn=false; }
 function setGpsChip(){
   let t,warn=false,pulse=false;
   if(!S.pos){t=S.locErr==='denied'?'Location off':S.locErr?'No GPS signal':'Locating';warn=true;pulse=!S.locErr;}
-  else if(S.offline){t='Listings offline';warn=true;}
+  else if(S.offline){t=S.offlineUsed?'Offline copy, '+agoText(S.offlineAt):'Listings offline';warn=true;}
   else if(S.src==='sim'){t='Demo walk';warn=true;}
   else if(S.src==='fixed'){t='Fixed location';warn=true;}
   else if(!CONFIG.API_URL){t='Sample data';warn=true;}
@@ -695,7 +712,7 @@ function updateLive(){
   el.countTxt.textContent=pre+(i>=0?`${i+1} of ${n}`:`${n} nearby`)+fl;
   const d=$('dTxt'),w=$('dDir'),a=$('arrow');
   if(d){d.textContent=fmtDist(r.d);w.textContent=direction(r.b);
-    a.style.transform=`rotate(${S.heading==null?r.b:((r.b-S.heading+360)%360)}deg)`;}
+    const h0=hd(); a.style.transform=`rotate(${h0==null?r.b:((r.b-h0+360)%360)}deg)`;}
 }
 
 /* =====================================================================
@@ -706,7 +723,7 @@ const specsShort=l=>[l.beds===0?'Studio':l.beds+' bd',l.baths!=null?l.baths+' ba
 
 let io=null;
 function showListing(rec){
-  const l=rec.l; S.cur=l; S.mediaIdx=0; S.vIdx=0;
+  const l=rec.l; if(!l.media||!l.media.length) l.media=stockMedia(l); S.cur=l; S.mediaIdx=0; S.vIdx=0;
   el.sum.innerHTML=`
     <div class="row">
       <div class="price">${money(l.price)}<small>/mo</small></div>
@@ -815,7 +832,7 @@ function renderHints(){
   const first=!S.cur||S.recs.findIndex(r=>r.l.id===S.cur.id)<=0;
   el.hint.innerHTML=H('◀ ▶','Media')+(first?H('▲','Menu')+H('▼','Next'):H('▲ ▼','Listings'))+H('Pinch','Open');
   if(!S.cur) return;
-  const m=S.cur.media[S.vIdx]||S.cur.media[0];
+  const m=S.cur.media[S.vIdx]||S.cur.media[0]||{};
   const act=m.type==='video'?'Play/pause':m.type==='tour360'?'Look around':(el.viewer.classList.contains('clean')?'Show info':'Hide info');
   el.vHint.innerHTML=H('◀ ▶','Browse')+H('▲','Close')+H('▼','Details')+H('Pinch',act);
   el.sheetHint.innerHTML=H('◀ ▶','Action')+H('Pinch','Do it')+H('▲ ▼','Scroll');
@@ -826,9 +843,12 @@ function renderHints(){
 /* =====================================================================
    Fullscreen viewer
    ===================================================================== */
-let vIO=null, hist=0, ignorePop=0;
-function pushView(){try{history.pushState({rw:1},'');hist++;}catch(e){}}
-function popView(){if(hist>0){hist--;ignorePop++;try{history.back();}catch(e){ignorePop--;}}}
+// Browser history entries let the system Back gesture step out of a screen. A push that follows a back() waits for that back to finish,
+// otherwise the browser lands on the wrong entry and can leave the app.
+let vIO=null, hist=0, ignorePop=0, pushQ=0;
+function doPush(){try{history.pushState({rw:1},'');hist++;}catch(e){}}
+function pushView(){ if(ignorePop>0){pushQ++;return;} doPush(); }
+function popView(){ if(pushQ>0){pushQ--;return;} if(hist>0){hist--;ignorePop++;try{history.back();}catch(e){ignorePop--;}} }
 
 function openViewer(i){
   if(!S.cur||S.view!=='card') return;
@@ -874,6 +894,7 @@ function detailsHTML(l){
     ${l.description?`<p>${esc(l.description)}</p>`:''}
     ${extra.length?`<h3>Rent and location</h3>${gridHTML(extra)}`:''}
     <div id="nearbySec">${nearbyHTML(l)}</div>
+    <div id="detailSec">${moreDetailHTML(l)}</div>
     ${basics.length||facts.length?`<h3>Details</h3>${gridHTML([...basics,...facts])}`:''}
     ${l.amenities&&l.amenities.length?`<h3>Amenities</h3><div class="tags">${l.amenities.map(a=>`<i>${esc(a)}</i>`).join('')}</div>`:''}
     ${hist.length?`<h3>Rent history</h3>${gridHTML(hist)}`:''}
@@ -1100,6 +1121,7 @@ function widenRange(){
   }else toast('Nothing more within '+fmtDist(S.radius));
 }
 function press(a){
+  askOrientation();
   if(S.locErr&&!S.gotFix&&!S.retried){S.retried=true;retryLocation();}
   touchInput();
   if(S.view==='look') return lookPress(a);
@@ -1112,7 +1134,7 @@ function press(a){
 function cardPress(a){
   switch(a){
     case 'L': stripGo(-1);break;   case 'R': stripGo(1);break;
-    case 'U': { const i=S.cur?S.recs.findIndex(r=>r.l.id===S.cur.id):-1; if(i<=0) openLayer('hub'); else listingGo(-1); break; }
+    case 'U': { const i=S.cur?S.recs.findIndex(r=>r.l.id===S.cur.id):-1; if(i<=0){S.hubIdx=0;openLayer('hub');} else listingGo(-1); break; }
     case 'D': listingGo(1);break;
     case 'ok': if(S.cur) openViewer(S.mediaIdx);break;
     case 'back': if(S.locked) unlock(); else bump('y');break;
@@ -1154,7 +1176,7 @@ document.addEventListener('keydown',e=>{
 });
 document.addEventListener('click',ok);
 addEventListener('popstate',()=>{
-  if(ignorePop>0){ignorePop--;return;}
+  if(ignorePop>0){ignorePop--; if(ignorePop===0) while(pushQ>0){pushQ--;doPush();} return;}
   if(hist>0) hist--;
   if(S.view==='look') exitLook(true);
   else if(S.view==='viewer'){ if(S.sheet){setSheet(false);pushView();} else closeViewer(true); }
@@ -1195,9 +1217,9 @@ document.addEventListener('visibilitychange',()=>{ if(document.hidden){
    Saved + compare, price drops, radar, menu, send to phone
    ===================================================================== */
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
-const LAYERS={hub:1,radar:1,saved:1,compare:1};
-const ly={hub:$('hub'),radar:$('radar'),saved:$('saved'),compare:$('compare')};
-Object.assign(el,{sheetActions:$('sheetActions'),lookCredit:$('lookCredit'),dropBadge:$('dropBadge'),hubList:$('hubList'),hubHint:$('hubHint'),
+const LAYERS={hub:1,radar:1,saved:1,compare:1,guide:1,route:1,sensors:1};
+const ly={hub:$('hub'),radar:$('radar'),saved:$('saved'),compare:$('compare'),guide:$('guide'),route:$('route'),sensors:$('sensors')};
+Object.assign(el,{ribbon:$('ribbon'),guideTitle:$('guideTitle'),guideSvg:$('guideSvg'),guideInfo:$('guideInfo'),guideHint:$('guideHint'),routeTitle:$('routeTitle'),routeList:$('routeList'),routeHint:$('routeHint'),sensBody:$('sensBody'),sensHint:$('sensHint'),sheetActions:$('sheetActions'),lookCredit:$('lookCredit'),dropBadge:$('dropBadge'),hubList:$('hubList'),hubHint:$('hubHint'),
   radarSvg:$('radarSvg'),radarInfo:$('radarInfo'),radarHint:$('radarHint'),savedTitle:$('savedTitle'),savedList:$('savedList'),savedHint:$('savedHint'),cmpBody:$('cmpBody'),cmpHint:$('cmpHint')});
 const apiHost=()=>apiBase().replace(/^https?:\/\//,'');
 
@@ -1237,13 +1259,13 @@ function toggleSave(l){
   else{LS.set('rw_saved',[{...compact(l),savedAt:Date.now(),savedPrice:l.price},...savedList()].slice(0,30));toast('Saved');syncSaved();}
   renderActions();
 }
-const ACTS=[{id:'save'},{id:'send'}];
-const actLabel=(a,l)=>a.id==='save'?(isSaved(l.id)?'Remove from saved':'Save this'):'Send to phone';
+const ACTS=[{id:'save'},{id:'send'},{id:'detail'},{id:'guide'}];
+const actLabel=(a,l)=>a.id==='save'?(isSaved(l.id)?'Unsave':'Save this'):a.id==='send'?'To phone':a.id==='detail'?'More detail':'Guide me';
 function renderActions(){
   if(!S.cur) return;
   el.sheetActions.innerHTML=ACTS.map((a,i)=>`<i class="${i===S.actIdx?'on':''}">${actLabel(a,S.cur)}</i>`).join('');
 }
-function doAction(){ if(ACTS[S.actIdx].id==='save') toggleSave(S.cur); else sendToPhone(S.cur); }
+function doAction(){ const a=ACTS[S.actIdx].id; if(a==='save') toggleSave(S.cur); else if(a==='send') sendToPhone(S.cur); else if(a==='detail') fetchDetail(S.cur); else startGuide(S.cur.id); }
 
 /* ----- price drops: from the listing's own rent history, else "lower than when you last looked" ----- */
 function priceDrop(l){
@@ -1276,7 +1298,7 @@ function markSeen(items){
 }
 
 /* ----- layers: menu > radar / saved > compare ----- */
-const renderers={hub:()=>renderHub(),radar:()=>renderRadar(),saved:()=>renderSaved(),compare:()=>renderCompare()};
+const renderers={hub:()=>renderHub(),radar:()=>renderRadar(),saved:()=>renderSaved(),compare:()=>renderCompare(),guide:()=>renderGuide(),route:()=>renderRoute(),sensors:()=>renderSensors()};
 function openLayer(name){
   if(S.view!=='card'){S.stack.push(S.view); if(ly[S.view]) ly[S.view].classList.remove('open');}
   S.view=name; pushView(); ly[name].classList.add('open'); renderers[name]();
@@ -1295,18 +1317,21 @@ function openListing(l){   // leave the menus and show this listing on the tile
   touchInput(); showListing(S.pos?recFor(f):{l:f,d:0,b:0});
 }
 function refreshLayers(){ if(S.view==='radar') renderRadar(); else if(S.view==='saved') renderSaved(); }
-function layerPress(a){ ({hub:hubPress,radar:radarPress,saved:savedPress,compare:comparePress})[S.view](a); }
+function layerPress(a){ ({hub:hubPress,radar:radarPress,saved:savedPress,compare:comparePress,guide:guidePress,route:routePress,sensors:sensorsPress})[S.view](a); }
 
 /* menu */
 const hubRows=()=>{
-  const fs=filtersSummary(S.filters);
+  const fs=filtersSummary(S.filters), c=compassNow()!=null;
   return [
-    {t:'Radar',s:'See every listing around you'},
-    {t:`Saved (${savedList().length})`,s:'Your favorites, and compare two'},
-    {t:'Filters: '+(fs?(S.filtersOn?'on':'off'):'none set'),s:fs?fs+'. Pinch to turn '+(S.filtersOn?'off':'on'):(CONFIG.API_URL?'Set them on your phone at '+apiHost()+'/phone':'Needs your real listings feed')},
-    {t:'Arrival alerts: '+(S.arriveOn?'on':'off'),s:'A banner when you reach a listing. Pinch to switch'},
-    {t:pairCode()?'Phone paired':'Pair your phone',s:CONFIG.API_URL?(pairCode()?'Listings you send show up at '+apiHost()+'/phone':'On your phone, open '+apiHost()+'/phone'):'Needs your real listings feed'},
-    {t:'Close menu',s:'Back to the listing'}
+    {id:'radar',t:'Radar',s:'See every listing around you'},
+    {id:'route',t:`Viewing route (${savedList().length} saved)`,s:'A walking order for your saved listings'},
+    {id:'saved',t:`Saved (${savedList().length})`,s:'Your favorites, and compare two'},
+    {id:'filters',t:'Filters: '+(fs?(S.filtersOn?'on':'off'):'none set'),s:fs?fs+'. Pinch to turn '+(S.filtersOn?'off':'on'):(CONFIG.API_URL?'Set them on your phone at '+apiHost()+'/phone':'Needs your real listings feed')},
+    {id:'ribbon',t:'Compass ribbon: '+(S.ribbonOn?'on':'off'),s:c?'Using the glasses’ compass. Pinch to switch':(S.heading!=null?'Using your walking direction. Pinch to switch':'No direction yet. Pinch to switch')},
+    {id:'arrive',t:'Arrival alerts: '+(S.arriveOn?'on':'off'),s:'A banner when you reach a listing. Pinch to switch'},
+    {id:'sensors',t:'Sensor check',s:'See which sensors the glasses give this page'},
+    {id:'phone',t:pairCode()?'Phone paired':'Pair your phone',s:CONFIG.API_URL?(pairCode()?'Listings you send show up at '+apiHost()+'/phone':'On your phone, open '+apiHost()+'/phone'):'Needs your real listings feed'},
+    {id:'close',t:'Close menu',s:'Back to the listing'}
   ];
 };
 function renderHub(){
@@ -1315,19 +1340,23 @@ function renderHub(){
   el.hubHint.innerHTML=H('▲ ▼','Move')+H('Pinch','Choose')+H('◀','Close');
 }
 function hubPress(a){
-  const n=hubRows().length;
+  const rows=hubRows(), n=rows.length;
   if(a==='U') S.hubIdx=(S.hubIdx+n-1)%n;
   else if(a==='D') S.hubIdx=(S.hubIdx+1)%n;
   else if(a==='L'||a==='back') return closeLayer(false);
   else if(a==='ok'){
-    if(S.hubIdx===0) return openLayer('radar');
-    if(S.hubIdx===1) return openLayer('saved');
-    if(S.hubIdx===2){
+    const id=rows[S.hubIdx].id;
+    if(id==='radar') return openLayer('radar');
+    if(id==='saved') return openLayer('saved');
+    if(id==='route'){ if(!savedList().length) toast('Save some listings first'); else return openLayer('route'); }
+    else if(id==='filters'){
       if(!hasFilters(S.filters)) toast(CONFIG.API_URL?'Set filters on your phone first':'Needs your real listings feed');
       else{S.filtersOn=!S.filtersOn;LS.set('rw_filters_on',S.filtersOn);toast('Filters '+(S.filtersOn?'on':'off'));tick();}
     }
-    else if(S.hubIdx===3){S.arriveOn=!S.arriveOn;LS.set('rw_arrive',S.arriveOn);toast('Arrival alerts '+(S.arriveOn?'on':'off'));}
-    else if(S.hubIdx===4) toast(pairCode()?'Already paired':'Open that address on your phone');
+    else if(id==='ribbon'){S.ribbonOn=!S.ribbonOn;LS.set('rw_ribbon',S.ribbonOn);toast('Compass ribbon '+(S.ribbonOn?'on':'off'));}
+    else if(id==='arrive'){S.arriveOn=!S.arriveOn;LS.set('rw_arrive',S.arriveOn);toast('Arrival alerts '+(S.arriveOn?'on':'off'));}
+    else if(id==='sensors') return openLayer('sensors');
+    else if(id==='phone') toast(pairCode()?'Already paired':'Open that address on your phone');
     else return closeLayer(false);
   }
   renderHub();
@@ -1343,7 +1372,7 @@ function medianByBeds(){
 const dotColor=(l,med)=>{const m=med.get(l.beds==null?'x':l.beds); if(!m) return '#e9fbff'; const p=l.price/m-1; return p<-0.08?'#4ade80':p>0.08?'#ffb224':'#e9fbff';};
 function renderRadar(){
   if(S.rRange==null){S.rRange=RANGES.findIndex(r=>r>=S.radius); if(S.rRange<0) S.rRange=RANGES.length-1;}
-  const range=RANGES[S.rRange], cx=300, cy=262, R=196, head=S.heading;
+  const range=RANGES[S.rRange], cx=300, cy=262, R=196, head=hd();
   const items=[];
   if(S.pos) for(const l of S.listings.values()){const r=recFor(l); if(r.d<=range&&passes(l)) items.push(r);}
   items.sort((a,b)=>a.d-b.d); items.length=Math.min(items.length,80);
@@ -1352,7 +1381,14 @@ function renderRadar(){
     return {r,rel,x:cx+k*Math.sin(rel*Math.PI/180),y:cy-k*Math.cos(rel*Math.PI/180)};});
   S.rOrder=[...pts].sort((a,b)=>a.rel-b.rel).map(p=>p.r.l.id);
   if(!S.rOrder.includes(S.rSel)) S.rSel=(S.cur&&S.rOrder.includes(S.cur.id))?S.cur.id:(pts.length?[...pts].sort((a,b)=>a.r.d-b.r.d)[0].r.l.id:null);
-  let g=`<g fill="none" stroke="rgba(0,229,255,.28)" stroke-width="1.5"><circle cx="${cx}" cy="${cy}" r="${R}"/><circle cx="${cx}" cy="${cy}" r="${R*2/3}"/><circle cx="${cx}" cy="${cy}" r="${R/3}"/><path d="M${cx} ${cy-R}V${cy+R}M${cx-R} ${cy}H${cx+R}" stroke-dasharray="3 7"/></g>`;
+  let wedges=''; const st=sectorStats(range);      // green / amber tint: cheaper or pricier than typical in that direction
+  st.forEach((sv,i)=>{
+    if(sv.n<3||sv.idx==null) return;
+    const dv=sv.idx-1, col=dv<-0.05?'74,222,128':dv>0.05?'255,178,36':null; if(!col) return;
+    const a0=(i*45-22.5-(head||0)-90)*Math.PI/180, a1=(i*45+22.5-(head||0)-90)*Math.PI/180, X=a=>(cx+R*Math.cos(a)).toFixed(1), Y=a=>(cy+R*Math.sin(a)).toFixed(1);
+    wedges+=`<path d="M${cx} ${cy}L${X(a0)} ${Y(a0)}A${R} ${R} 0 0 1 ${X(a1)} ${Y(a1)}Z" fill="rgba(${col},${(0.07+Math.min(Math.abs(dv),0.3)*0.5).toFixed(2)})"/>`;
+  });
+  let g=wedges+`<g fill="none" stroke="rgba(0,229,255,.28)" stroke-width="1.5"><circle cx="${cx}" cy="${cy}" r="${R}"/><circle cx="${cx}" cy="${cy}" r="${R*2/3}"/><circle cx="${cx}" cy="${cy}" r="${R/3}"/><path d="M${cx} ${cy-R}V${cy+R}M${cx-R} ${cy}H${cx+R}" stroke-dasharray="3 7"/></g>`;
   g+=[1/3,2/3,1].map(k=>`<text x="${cx+8}" y="${cy-R*k+17}" fill="#86aab4" font-size="15">${fmtDist(range*k)}</text>`).join('');
   g+=`<text x="${cx}" y="${cy-R-8}" fill="#86aab4" font-size="17" text-anchor="middle">${head==null?'N':'ahead'}</text>`;
   let sel='';
@@ -1367,6 +1403,7 @@ function renderRadar(){
   g+=sel;
   g+=head==null?`<circle cx="${cx}" cy="${cy}" r="7" fill="#00e5ff"/>`:`<path d="M${cx} ${cy-12}L${cx+9} ${cy+10}L${cx} ${cy+5}L${cx-9} ${cy+10}Z" fill="#00e5ff"/>`;
   g+=`<text x="20" y="34" fill="#e9fbff" font-size="21" font-weight="700">Range ${fmtDist(range)}</text>`;
+  { const cd=cheapCached(); if(cd) g+=`<text x="20" y="58" fill="#4ade80" font-size="16" font-weight="700">Cheaper to the ${cd.name}, ${cd.pct}% below typical</text>`; }
   g+=`<g font-size="15" fill="#86aab4"><circle cx="352" cy="28" r="6" fill="#4ade80"/><text x="364" y="33">cheaper</text><circle cx="440" cy="28" r="6" fill="#e9fbff"/><text x="452" y="33">typical</text><circle cx="518" cy="28" r="6" fill="#ffb224"/><text x="530" y="33">pricier</text></g>`;
   if(!pts.length) g+=`<text x="${cx}" y="${cy}" fill="#86aab4" font-size="22" text-anchor="middle">No listings in this range</text>`;
   el.radarSvg.innerHTML=g;
@@ -1469,7 +1506,7 @@ function filtersSummary(f){
   if(f.minSqft) p.push(f.minSqft+'+ ft²'); if(f.types&&f.types.length) p.push(f.types.join('/')); if(f.dropsOnly) p.push('price drops'); if(f.newOnly) p.push('new only');
   return p.join(', ');
 }
-function readFilters(){ S.filters=LS.get('rw_filters',null); S.filtersOn=LS.get('rw_filters_on',true)!==false; S.arriveOn=LS.get('rw_arrive',true)!==false; }
+function readFilters(){ S.filters=LS.get('rw_filters',null); S.filtersOn=LS.get('rw_filters_on',true)!==false; S.arriveOn=LS.get('rw_arrive',true)!==false; S.ribbonOn=LS.get('rw_ribbon',true)!==false; }
 async function loadFilters(){
   const code=pairCode(); if(!code||!CONFIG.API_URL) return;
   try{
@@ -1501,25 +1538,296 @@ function checkArrival(recs){
 function nearbyHTML(l){
   if(!CONFIG.API_URL||String(l.id).startsWith('demo-')) return '';
   const n=l.nearby;
-  if(n===undefined) return '<h3>Nearby</h3><p>Looking up…</p>';
-  if(n===null) return '<h3>Nearby</h3><p>Couldn’t load nearby places just now.</p>';
-  const row=(k,v)=>[k,v?`${v.name||v.kind}, ${v.minutes} min walk (${fmtDist(v.distanceM)})`:'None within about 0.75 mi',true];
-  return `<h3>Nearby</h3>${gridHTML([row('Train or subway',n.train),row('Bus stop',n.bus),row('Grocery',n.grocery),row('Park',n.park)])}<p style="font-size:14px;color:var(--dim);margin-top:6px">Walking times are estimates. Map data © OpenStreetMap contributors.</p>`;
+  if(n===undefined||n==='loading') return '<h3>Nearby</h3><p>Looking up…</p>';
+  if(n===null) return `<h3>Nearby</h3><p>Couldn’t load nearby places${l.nearbyErr?' ('+esc(l.nearbyErr)+')':''}. Close and reopen the details to try again.</p>`;
+  const R=n.radii||{};
+  const row=(k,v,r)=>[k,v?`${v.name||v.kind}, ${v.minutes} min walk (${fmtDist(v.distanceM)})`:`None within ${fmtDist(r||1000)}`,true];
+  const food=n.food&&n.food.count!=null?[['Cafes and restaurants',`${n.food.count} within ${fmtDist(n.food.withinM||500)}`,true]]:[];
+  return `<h3>Nearby</h3>${gridHTML([row('Train or subway',n.train,R.train),row('Bus stop',n.bus,R.bus),row('Grocery',n.grocery,R.grocery),row('Pharmacy',n.pharmacy,R.pharmacy),row('Park',n.park,R.park),...food])}<p style="font-size:14px;color:var(--dim);margin-top:6px">Walking times are estimates. Map data © OpenStreetMap contributors.</p>`;
 }
+function updateNearbySec(l){ const sec=$('nearbySec'); if(sec&&S.cur&&S.cur.id===l.id) sec.innerHTML=nearbyHTML(l); }
 async function fetchNearby(l){
   if(!CONFIG.API_URL||l._nb||String(l.id).startsWith('demo-')) return;
-  l._nb=true;
+  l._nb=true; l.nearby='loading'; updateNearbySec(l);
   try{
     const r=await fetch(`${apiBase()}/nearby?lat=${l.lat.toFixed(6)}&lng=${l.lng.toFixed(6)}`);
-    l.nearby=r.ok?await r.json():null;
-  }catch(e){l.nearby=null;}
-  const sec=$('nearbySec'); if(sec&&S.cur&&S.cur.id===l.id) sec.innerHTML=nearbyHTML(l);
+    const j=await r.json().catch(()=>null);
+    if(r.ok&&j) l.nearby=j;
+    else{ l.nearby=null; l._nb=false; l.nearbyErr=j&&j.tried&&j.tried.length?'map service busy: '+j.tried.map(t=>t.status).join(', '):(j&&j.error)||('HTTP '+r.status); }
+  }catch(e){l.nearby=null;l._nb=false;l.nearbyErr='no connection';}
+  updateNearbySec(l);
 }
+
+/* ----- more detail: property features, taxes, last sale and ZIP rent statistics (RentCast, on request) ----- */
+function moreDetailHTML(l){
+  if(!CONFIG.API_URL||String(l.id).startsWith('demo-')) return '';
+  const d=l.detail;
+  if(d===undefined) return '<h3>Property features</h3><p>Choose “More detail” above to load features, taxes, the last sale and local rent statistics. It uses up to 2 of your RentCast requests, then it is saved for weeks.</p>';
+  if(d==='loading') return '<h3>Property features</h3><p>Loading…</p>';
+  if(d===null) return `<h3>Property features</h3><p>Couldn’t load that just now${l.detailErr?': '+esc(l.detailErr):''}. Choose More detail to try again.</p>`;
+  const facts=(d.property&&d.property.facts)||[];
+  let h=facts.length?`<h3>Property features</h3>${gridHTML(facts)}`:'<h3>Property features</h3><p>No property record was found for this address.</p>';
+  const m=d.market;
+  if(m&&(m.beds||m.all)){
+    const rows=[];
+    if(m.beds){
+      const label=m.beds.bedrooms===0?'studio':m.beds.bedrooms+' bedroom';
+      rows.push([`Typical ${label} rent`,`${money(m.beds.median)} (average ${money(m.beds.average)})`,true]);
+      if(m.beds.min!=null) rows.push(['Range',`${money(m.beds.min)} to ${money(m.beds.max)}`]);
+      if(m.beds.perSqft) rows.push(['Per sq ft','$'+Number(m.beds.perSqft).toFixed(2)]);
+      if(m.beds.dom!=null) rows.push(['Days on market',String(m.beds.dom)]);
+      if(m.beds.listings!=null) rows.push(['Listings now',String(m.beds.listings)]);
+      if(m.beds.median>0){const pct=Math.round((l.price/m.beds.median-1)*100); rows.push(['This listing',pct===0?'About typical':Math.abs(pct)+'% '+(pct<0?'below':'above')+' typical',true]);}
+    }
+    if(m.all) rows.push(['All sizes, typical',`${money(m.all.median)} across ${m.all.listings} listings`,true]);
+    h+=`<h3>Rents in ZIP ${esc(m.zip||'')}</h3>${gridHTML(rows)}`;
+  }
+  if(d.notes&&d.notes.length) h+=`<p style="font-size:14px;color:var(--amber)">${esc(d.notes.join(' '))}</p>`;
+  return h+'<p style="font-size:14px;color:var(--dim)">Property and market data from RentCast.</p>';
+}
+function updateDetailSec(l){ const sec=$('detailSec'); if(sec&&S.cur&&S.cur.id===l.id) sec.innerHTML=moreDetailHTML(l); }
+async function fetchDetail(l){
+  if(!CONFIG.API_URL||String(l.id).startsWith('demo-')){toast('Extra detail needs your real listings feed');return;}
+  if(l.detail==='loading') return;
+  l.detail='loading'; updateDetailSec(l);
+  const sec=$('detailSec'); if(sec) el.sheetBody.scrollTo({top:Math.max(0,sec.offsetTop-10),behavior:'smooth'});
+  const zip=((l.address||'').match(/\b(\d{5})(?:-\d{4})?\s*$/)||[])[1]||'';
+  try{
+    const r=await fetch(`${apiBase()}/detail?address=${encodeURIComponent(l.address||'')}&zip=${zip}&beds=${l.beds==null?'':l.beds}`);
+    const j=await r.json().catch(()=>null);
+    if(r.ok&&j){l.detail=j;l.detailErr='';} else{l.detail=null;l.detailErr=(j&&j.error)||('HTTP '+r.status);}
+  }catch(e){l.detail=null;l.detailErr='no connection';}
+  updateDetailSec(l);
+}
+
+/* =====================================================================
+   Compass, ribbon, cheaper direction, guide arrow, viewing route, sensor check, offline copy
+   ===================================================================== */
+const CMP={raw:null,alpha:null,beta:null,gamma:null,src:'',abs:false,t:0,seen:0,motion:0,accel:null,offset:+(LS.get('rw_coff',0)||0),cal:0,asked:false,manual:false};
+function compassHeading(a,b,g){   // the direction the back of the device (what the wearer looks toward) points, from the W3C formula
+  const r=Math.PI/180,x=(b||0)*r,y=(g||0)*r,z=(a||0)*r,cY=Math.cos(y),cZ=Math.cos(z),sX=Math.sin(x),sY=Math.sin(y),sZ=Math.sin(z);
+  const Vx=-cZ*sY-sZ*sX*cY, Vy=-sZ*sY+cZ*sX*cY;
+  let h=Math.atan(Vx/Vy); if(Vy<0) h+=Math.PI; else if(Vx<0) h+=2*Math.PI;
+  return h*180/Math.PI;
+}
+function onOrient(e,isAbs){
+  if(typeof e.webkitCompassHeading==='number'){CMP.raw=e.webkitCompassHeading;CMP.src='webkit';CMP.abs=true;CMP.seen++;CMP.t=performance.now();return;}
+  if(e.alpha==null) return;
+  CMP.seen++; CMP.t=performance.now(); CMP.alpha=e.alpha; CMP.beta=e.beta; CMP.gamma=e.gamma;
+  CMP.abs=isAbs||e.absolute===true; CMP.src=CMP.abs?'absolute':'relative'; CMP.raw=compassHeading(e.alpha,e.beta,e.gamma);
+}
+function initSensors(){
+  if(Q.get('coff')!=null&&isFinite(+Q.get('coff'))){CMP.offset=+Q.get('coff');CMP.manual=true;}
+  addEventListener('deviceorientationabsolute',e=>onOrient(e,true),true);
+  addEventListener('deviceorientation',e=>{ if(CMP.src==='absolute'&&performance.now()-CMP.t<2000&&!e.absolute) return; onOrient(e,false); },true);
+  addEventListener('devicemotion',e=>{CMP.motion++;CMP.accel=e.accelerationIncludingGravity;},true);
+}
+function askOrientation(){   // some browsers only share motion sensors after a gesture
+  if(CMP.asked) return; CMP.asked=true;
+  try{if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function') DeviceOrientationEvent.requestPermission().catch(()=>{});}catch(e){}
+  try{if(typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function') DeviceMotionEvent.requestPermission().catch(()=>{});}catch(e){}
+}
+const compassFresh=()=>CMP.raw!=null&&(CMP.abs||CMP.src==='webkit')&&performance.now()-CMP.t<1500;
+const compassNow=()=>compassFresh()?(((CMP.raw+CMP.offset)%360)+360)%360:null;
+function hd(){const c=compassNow();return c!=null?c:S.heading;}   // compass if the glasses give it to us, else the way you are walking
+function calibrate(gpsHdg){   // while walking, learn how far the compass is off from the direction of travel
+  if(CMP.manual||Q.get('calibrate')==='0'||!compassFresh()) return;
+  CMP.offset=blendAngle(CMP.offset,(((gpsHdg-CMP.raw)%360)+360)%360,0.08); CMP.cal++;
+  if(CMP.cal%10===0) LS.set('rw_coff',Math.round(CMP.offset*10)/10);
+}
+
+/* cheaper this way: typical rent index (rent divided by the typical rent for the same bedroom count) by compass direction */
+let medMemo={t:0,n:-1,v:null};
+const medians=()=>{const now=Date.now(); if(medMemo.v&&now-medMemo.t<3000&&medMemo.n===S.listings.size) return medMemo.v; medMemo={t:now,n:S.listings.size,v:medianByBeds()}; return medMemo.v;};
+const SECT=['north','northeast','east','southeast','south','southwest','west','northwest'];
+function sectorStats(range=1200){
+  const st=Array.from({length:8},()=>[]); if(!S.pos) return st.map(()=>({n:0,idx:null}));
+  const med=medians();
+  for(const l of S.listings.values()){
+    if(!(l.price>0)||!passes(l)) continue;
+    const r=recFor(l); if(r.d>range||r.d<20) continue;
+    const m=med.get(l.beds==null?'x':l.beds); if(!m) continue;
+    st[Math.floor((((r.b%360)+360)%360+22.5)/45)%8].push(l.price/m);
+  }
+  return st.map(a=>{a.sort((x,y)=>x-y);return {n:a.length,idx:a.length?a[Math.floor(a.length/2)]:null};});
+}
+function cheapDir(){
+  let best=null; sectorStats().forEach((s,i)=>{ if(s.n>=3&&(!best||s.idx<best.idx)) best={i,idx:s.idx,n:s.n}; });
+  return best&&best.idx<0.97?{bearing:best.i*45,name:SECT[best.i],pct:Math.round((1-best.idx)*100),n:best.n}:null;
+}
+let cheapMemo={t:0,v:null};
+const cheapCached=()=>{const n=Date.now(); if(n-cheapMemo.t>2500) cheapMemo={t:n,v:cheapDir()}; return cheapMemo.v;};
+
+/* compass ribbon: price tags placed by direction across the top */
+const compactPrice=p=>'$'+(p>=1000?(Math.round(p/100)/10)+'k':p);
+function renderRibbon(){
+  const box=el.ribbon, head=hd();
+  if(!S.ribbonOn||S.view!=='card'||!S.pos||head==null){ if(box.style.display!=='none') box.style.display='none'; return; }
+  box.style.display='block';
+  const W=568,FOV=120,px=W/FOV,mid=W/2,X=rel=>mid+rel*px,wrap=a=>(((a%360)+540)%360)-180,med=medians();
+  let s=`<line x1="0" y1="86" x2="${W}" y2="86" stroke="rgba(0,229,255,.4)" stroke-width="2"/>`;
+  for(let d=Math.ceil((head-62)/10)*10;d<=head+62;d+=10){
+    const x=X(d-head).toFixed(1), a=((d%360)+360)%360, c=a%45===0;
+    s+=`<line x1="${x}" y1="${c?74:80}" x2="${x}" y2="86" stroke="rgba(0,229,255,${c?.95:.45})" stroke-width="${c?2.5:1.5}"/>`;
+    if(c) s+=`<text x="${x}" y="70" fill="#00e5ff" font-size="16" font-weight="700" text-anchor="middle">${['N','NE','E','SE','S','SW','W','NW'][a/45]}</text>`;
+  }
+  s+=`<path d="M${mid} 86l-6 10h12z" fill="#e9fbff"/>`;
+  const tags=S.recs.filter(r=>r.d<=CONFIG.RIBBON_M).map(r=>({r,rel:wrap(r.b-head)})).filter(t=>Math.abs(t.rel)<=60).sort((a,b)=>Math.abs(a.rel)-Math.abs(b.rel)).slice(0,12);
+  const rows=[[],[]];
+  for(const t of tags){
+    const x=X(t.rel), row=rows[0].every(o=>Math.abs(o-x)>=58)?0:rows[1].every(o=>Math.abs(o-x)>=58)?1:-1;
+    if(row<0) continue; rows[row].push(x);
+    const y=row?28:2, l=t.r.l, col=dotColor(l,med), mid0=Math.abs(t.rel)<9, xs=x.toFixed(1);
+    s+=`<line x1="${xs}" y1="${y+22}" x2="${xs}" y2="86" stroke="${col}" stroke-opacity="${mid0?.7:.3}" stroke-width="${mid0?2:1}"/>`
+      +`<rect x="${(x-27).toFixed(1)}" y="${y}" width="54" height="22" rx="11" fill="rgba(4,13,19,.92)" stroke="${mid0?'#00e5ff':col}" stroke-width="${mid0?3:1.8}"/>`
+      +`<text x="${xs}" y="${y+16}" fill="${col}" font-size="15" font-weight="700" text-anchor="middle">${compactPrice(l.price)}</text>`;
+  }
+  const cd=cheapCached();
+  if(cd){
+    const rel=wrap(cd.bearing-head);
+    if(Math.abs(rel)<=60){const x=X(rel); s+=`<path d="M${(x-7).toFixed(1)} 99L${(x+7).toFixed(1)} 99L${x.toFixed(1)} 89Z" fill="#4ade80"/><text x="${(x+11).toFixed(1)}" y="99" fill="#4ade80" font-size="13" font-weight="700">cheaper</text>`;}
+    else s+=rel<0?`<text x="2" y="99" fill="#4ade80" font-size="13" font-weight="700">◀ cheaper</text>`:`<text x="${W-2}" y="99" fill="#4ade80" font-size="13" font-weight="700" text-anchor="end">cheaper ▶</text>`;
+  }
+  s+=`<text x="${mid+14}" y="99" fill="#86aab4" font-size="12">${compassNow()!=null?'compass':'walking direction'}</text>`;
+  box.innerHTML=s;
+}
+
+/* guide arrow + viewing route */
+const guideTarget=()=>S.guideId?(S.listings.get(S.guideId)||savedList().find(x=>x.id===S.guideId)||null):null;
+function nextStop(){
+  if(!S.route) return; S.route.i++; S.guideArrived=0;
+  if(S.route.i>=S.route.ids.length){toast('Route complete');S.route=null;S.guideId=null;return closeLayer(false);}
+  S.guideId=S.route.ids[S.route.i]; renderGuide();
+}
+function renderGuide(){
+  const l=guideTarget(), n=S.route?S.route.ids.length:0;
+  el.guideTitle.innerHTML=`Guide${S.route?`<small>stop ${S.route.i+1} of ${n}</small>`:''}`;
+  if(!l||!S.pos){
+    el.guideSvg.innerHTML=''; el.guideInfo.innerHTML=`<div class="a" style="font-size:20px;margin-top:14px">${l?'Waiting for your location.':'Nothing to guide to.'}</div>`;
+    el.guideHint.innerHTML=H('◀','Close'); return;
+  }
+  const r=recFor(l), head=hd(), rel=head==null?r.b:(((r.b-head)%360)+360)%360, arrived=r.d<=CONFIG.ARRIVE_M, min=Math.max(1,Math.round(r.d*1.3/80));
+  let g=`<circle cx="300" cy="230" r="150" fill="none" stroke="rgba(0,229,255,.3)" stroke-width="2"/>`;
+  g+=arrived?`<circle cx="300" cy="230" r="90" fill="none" stroke="#7dffb0" stroke-width="10"/><path d="M255 232l32 32 60-70" fill="none" stroke="#7dffb0" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>`
+    :`<g transform="rotate(${rel.toFixed(1)} 300 230)"><path d="M300 100L372 312L300 268L228 312Z" fill="#00e5ff"/></g>`;
+  g+=`<text x="300" y="424" fill="#e9fbff" font-size="66" font-weight="700" text-anchor="middle">${arrived?'You’re here':fmtDist(r.d)}</text>`;
+  g+=`<text x="300" y="456" fill="#86aab4" font-size="22" text-anchor="middle">${arrived?'Pinch to see the listing':(head==null?'Head '+cardinal(r.b):direction(r.b))+', about '+min+' min walk'}</text>`;
+  el.guideSvg.innerHTML=g;
+  el.guideInfo.innerHTML=`<div class="p">${money(l.price)}<small style="font-size:19px;color:var(--ink);font-weight:600;margin-left:8px">${esc(specsShort(l))}</small></div><div class="a">${esc(l.address||'')}</div>`;
+  el.guideHint.innerHTML=H('Pinch','Show listing')+(S.route?H('▶','Skip stop'):'')+H('◀','Stop');
+  if(arrived&&S.route){ if(!S.guideArrived) S.guideArrived=Date.now(); else if(Date.now()-S.guideArrived>3500) nextStop(); } else if(!arrived) S.guideArrived=0;
+}
+function guidePress(a){
+  if(a==='L'||a==='back'){S.guideId=null;S.route=null;return closeLayer(false);}
+  if(a==='R'){ if(S.route) return nextStop(); toast('That was the only stop'); return; }
+  if(a==='ok'){const l=guideTarget(); if(l) return openListing(l);}
+}
+function startGuide(id){ S.guideId=id; S.guideArrived=0; S.route=null; closeViewer(false); openLayer('guide'); }
+function planRoute(){
+  const saved=savedList().filter(x=>isFinite(x.lat)&&isFinite(x.lng)).slice(0,9);
+  if(!saved.length) return null;
+  const start=S.pos?{lat:S.pos.lat,lng:S.pos.lng}:{lat:saved[0].lat,lng:saved[0].lng}, d=(a,b)=>dist(a.lat,a.lng,b.lat,b.lng)*1.3;
+  let left=[...saved], order=[], cur=start;
+  while(left.length){let bi=0,bd=Infinity; left.forEach((x,i)=>{const v=d(cur,x); if(v<bd){bd=v;bi=i;}}); const x=left.splice(bi,1)[0]; order.push(x); cur=x;}
+  const total=o=>{let t=0,p=start; o.forEach(x=>{t+=d(p,x);p=x;}); return t;};
+  let improved=true, guard=0;
+  while(improved&&guard++<40){
+    improved=false;
+    for(let i=0;i<order.length-1;i++) for(let k=i+1;k<order.length;k++){
+      const cand=[...order.slice(0,i),...order.slice(i,k+1).reverse(),...order.slice(k+1)];
+      if(total(cand)<total(order)-1){order=cand;improved=true;}
+    }
+  }
+  let p=start; const legs=order.map(x=>{const m=d(p,x); p=x; return m;});
+  return {stops:order,legs,totalM:legs.reduce((a,b)=>a+b,0)};
+}
+function renderRoute(){
+  const p=S.plan=planRoute();
+  if(!p){el.routeTitle.innerHTML='Route';el.routeList.innerHTML='<div class="row2"><b>No saved listings</b><span>Save a few listings first.</span></div>';el.routeHint.innerHTML=H('◀','Close');return;}
+  S.routeSel=clamp(S.routeSel,0,p.stops.length-1);
+  el.routeTitle.innerHTML=`Route<small>${p.stops.length} stop${p.stops.length===1?'':'s'}, ${Math.max(1,Math.round(p.totalM/80))} min walking</small>`;
+  el.routeList.innerHTML=p.stops.map((x,i)=>`<div class="row2${i===S.routeSel?' on':''}"><b>${i+1}. ${money(x.price)}<em class="dr">${Math.max(1,Math.round(p.legs[i]/80))} min</em></b><span>${esc(x.address||'')}</span></div>`).join('');
+  const rowEl=el.routeList.children[S.routeSel]; if(rowEl&&rowEl.scrollIntoView) rowEl.scrollIntoView({block:'nearest'});
+  el.routeHint.innerHTML=H('▲ ▼','Move')+H('Pinch','Guide me')+H('▶','To phone')+H('◀','Close');
+}
+async function sendRoute(){
+  const code=pairCode(), p=S.plan;
+  if(!p) return;
+  if(!CONFIG.API_URL||!code){toast(code?'Needs your real listings feed':'Pair first: open '+apiHost()+'/phone on your phone');return;}
+  toast('Sending…',true);
+  try{const r=await fetch(`${apiBase()}/sync/route?code=${code}`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({stops:p.stops.map(forPhone)})}); toast(r.ok?'Route sent to your phone':'Could not send');}
+  catch(e){toast('Could not send');}
+}
+function routePress(a){
+  const p=S.plan; if(!p) return closeLayer(false);
+  if(a==='U') S.routeSel=Math.max(0,S.routeSel-1);
+  else if(a==='D') S.routeSel=Math.min(p.stops.length-1,S.routeSel+1);
+  else if(a==='L'||a==='back') return closeLayer(false);
+  else if(a==='R') return sendRoute();
+  else if(a==='ok'){ S.route={ids:p.stops.map(x=>x.id),i:S.routeSel}; S.guideId=S.route.ids[S.routeSel]; S.guideArrived=0; return openLayer('guide'); }
+  renderRoute();
+}
+
+/* sensor check: what this page can actually read from the glasses */
+function sensorInfo(){
+  const fresh=compassFresh(), rows=[];
+  rows.push([!!S.pos,'Location',S.pos?`${S.src}, accuracy ${S.acc!=null?Math.round(S.acc)+' m':'unknown'}, speed ${S.speed!=null&&isFinite(S.speed)?S.speed.toFixed(1)+' m/s':'unknown'}, walking direction ${S.heading!=null?Math.round(S.heading)+'°':'none yet'}`:'no fix yet']);
+  rows.push([fresh,'Compass',CMP.seen?`${CMP.src||'?'}${CMP.abs?', north-referenced':', not north-referenced'}, ${fresh?'live':'stopped'}, reading ${CMP.raw!=null?Math.round(CMP.raw)+'°':'none'}, correction ${Math.round(CMP.offset)}° (${CMP.cal} walking samples)`:'no orientation events reached this page']);
+  rows.push([CMP.motion>0,'Motion',CMP.motion?`${CMP.motion} events${CMP.accel&&CMP.accel.x!=null?`, gravity ${Math.hypot(CMP.accel.x,CMP.accel.y,CMP.accel.z).toFixed(1)} m/s²`:''}`:'no motion events']);
+  rows.push([null,'Sensor API',`AbsoluteOrientationSensor ${'AbsoluteOrientationSensor' in window?'yes':'no'}, Magnetometer ${'Magnetometer' in window?'yes':'no'}`]);
+  rows.push([null,'Camera',navigator.mediaDevices&&navigator.mediaDevices.getUserMedia?'the API exists (it may still be blocked)':'not available']);
+  rows.push([null,'Screen',`${innerWidth} x ${innerHeight}, pixel ratio ${devicePixelRatio}`]);
+  const verdict=fresh?'Ribbon and arrows use the compass.':(S.heading!=null?'Ribbon and arrows use your walking direction.':'No direction yet. Walk a few steps.');
+  return {rows,verdict};
+}
+function renderSensors(){
+  const {rows,verdict}=sensorInfo();
+  el.sensBody.innerHTML=`<div class="row2 on"><b>${esc(verdict)}</b></div>`+rows.map(r=>`<div class="row2"><b>${r[1]}${r[0]===true?'<em class="dr">OK</em>':r[0]===false?'<em class="up">none</em>':''}</b><span>${esc(r[2])}</span></div>`).join('');
+  el.sensHint.innerHTML=H('▲ ▼','Scroll')+H('Pinch','Send to phone')+H('◀','Close');
+}
+async function sendReport(){
+  const code=pairCode(); if(!CONFIG.API_URL||!code){toast(code?'Needs your real listings feed':'Pair first: open '+apiHost()+'/phone on your phone');return;}
+  const {rows,verdict}=sensorInfo(), text=rows.map(r=>`${r[1]}: ${r[2]}`).join('\n')+`\nVerdict: ${verdict}\nBrowser: ${navigator.userAgent}`;
+  toast('Sending…',true);
+  try{const r=await fetch(`${apiBase()}/sync/report?code=${code}`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text})}); toast(r.ok?'Report sent to your phone':'Could not send');}catch(e){toast('Could not send');}
+}
+function sensorsPress(a){
+  if(a==='L'||a==='back') return closeLayer(false);
+  if(a==='U') el.sensBody.scrollBy({top:-140,behavior:'smooth'});
+  else if(a==='D') el.sensBody.scrollBy({top:140,behavior:'smooth'});
+  else if(a==='ok') sendReport();
+}
+
+/* offline copy: the last area's listings stay usable when the signal drops */
+const OFF='rw_offline';
+function saveOffline(){
+  if(!CONFIG.API_URL||!S.fetchCenter) return;
+  const c=S.fetchCenter, items=[...S.listings.values()].filter(l=>!String(l.id).startsWith('demo-')).map(l=>({...compact(l),seenDrop:l.seenDrop,source:l.source}))
+    .sort((a,b)=>dist(c.lat,c.lng,a.lat,a.lng)-dist(c.lat,c.lng,b.lat,b.lng));
+  for(const n of [500,250,100]){ try{localStorage.setItem(OFF,JSON.stringify({t:Date.now(),c,items:items.slice(0,n)}));return;}catch(e){} }
+}
+function loadOffline(){
+  const o=LS.get(OFF,null);
+  if(!o||!S.pos||!o.items||!o.c||dist(S.pos.lat,S.pos.lng,o.c.lat,o.c.lng)>4000) return false;
+  for(const l of o.items) if(!S.listings.has(l.id)){const f={...l}; f.media=stockMedia(f); S.listings.set(f.id,f);}
+  S.offlineAt=o.t; return true;
+}
+const agoText=ms=>{const m=Math.round((Date.now()-ms)/60000); return m<2?'just now':m<90?m+' min old':Math.round(m/60)+' h old';};
+function registerSW(){
+  if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+setInterval(()=>{ try{
+  if(S.view==='card'){ renderRibbon(); if(compassNow()!=null) updateLive(); }
+  else if(el.ribbon.style.display!=='none') renderRibbon();
+  if(S.view==='guide') renderGuide();
+  if(S.view==='sensors') renderSensors();
+  if(S.view==='radar'&&compassNow()!=null) renderRadar();
+}catch(e){} },150);
 
 if(Q.get('debug')) window.__rw={S,CONFIG};
 
 /* ---------- go ---------- */
-initPair(); readFilters(); loadFilters(); setInterval(loadFilters,300000); setGpsChip(); setMode(); startGPS();
+initPair(); readFilters(); initSensors(); registerSW(); loadFilters(); setInterval(loadFilters,300000); setGpsChip(); setMode(); startGPS();
 })();
 </script>
 </body>
