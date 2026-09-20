@@ -531,18 +531,32 @@ function onFix(lat,lng,hdg,acc,src){
   tick();
 }
 function startGPS(){
-  const fix=(Q.get('fix')||'').split(',').map(Number);   // ?fix=42.425,-71.066 pins the location (for testing)
-  if(fix.length===2&&fix.every(isFinite)&&Q.get('fix')){onFix(fix[0],fix[1],null,5,'fixed');return;}
+  const raw=Q.get('fix')||'';
+  const parse=v=>{const a=String(v).split(',').map(Number);return a.length===2&&a.every(isFinite)&&Math.abs(a[0])<=90&&Math.abs(a[1])<=180?a:null;};
+  if(raw==='clear'){try{localStorage.removeItem('rw_fix');}catch(e){}}
+  const fix=parse(raw);   // ?fix=42.425,-71.066 pins a place and remembers it for next time (?fix=clear forgets it)
+  if(fix){try{localStorage.setItem('rw_fix',raw);}catch(e){} onFix(fix[0],fix[1],null,5,'fixed');return;}
+  try{S.savedFix=parse(localStorage.getItem('rw_fix')||'');}catch(e){}
   const demo=!CONFIG.API_URL;   // demo data can fall back to a simulated walk; real listings never do
   if(CONFIG.FORCE_SIM||!('geolocation' in navigator)){
-    if(CONFIG.FORCE_SIM||demo) startSim(); else {S.locErr='unavailable';setGpsChip();setEmpty();}
+    if(CONFIG.FORCE_SIM||demo) startSim(); else {S.locErr='unavailable';useSaved();setGpsChip();setEmpty();}
     return;
   }
-  navigator.geolocation.watchPosition(
-    p=>{S.gotFix=true;S.locErr=null;onFix(p.coords.latitude,p.coords.longitude,p.coords.heading,p.coords.accuracy,'gps');},
-    err=>{S.locErr=err.code===1?'denied':'unavailable';setGpsChip();setEmpty(); if(!S.gotFix&&!S.simOn&&demo) startSim();},
-    {enableHighAccuracy:true,maximumAge:2000,timeout:20000});
+  watchGPS(demo);
   if(demo) setTimeout(()=>{ if(!S.gotFix&&!S.simOn) startSim(); },10000);
+}
+function watchGPS(demo){
+  if(S.watchId!=null) navigator.geolocation.clearWatch(S.watchId);
+  S.watchId=navigator.geolocation.watchPosition(
+    p=>{S.gotFix=true;S.locErr=null;onFix(p.coords.latitude,p.coords.longitude,p.coords.heading,p.coords.accuracy,'gps');},
+    err=>{S.locErr=err.code===1?'denied':'unavailable';S.locMsg=err.message||'';setGpsChip();setEmpty(); if(!S.gotFix) useSaved(); if(!S.gotFix&&!S.simOn&&demo) startSim();},
+    {enableHighAccuracy:true,maximumAge:2000,timeout:20000});
+}
+function useSaved(){ if(!S.pos&&S.savedFix) onFix(S.savedFix[0],S.savedFix[1],null,5,'fixed'); }
+// Some browsers only ask for location after a user gesture, so the first swipe or pinch tries again
+function retryLocation(){
+  if(!('geolocation' in navigator)) return;
+  S.locErr=null; setGpsChip(); setEmpty(); watchGPS(!CONFIG.API_URL);
 }
 function startSim(){
   if(S.simOn) return; S.simOn=true;
@@ -590,7 +604,7 @@ function tick(){
 function setEmpty(){
   if(S.cur){el.empty.classList.add('gone');return;}
   el.empty.classList.remove('gone');
-  el.emptyTxt.innerHTML=!S.pos?(S.locErr==='denied'?'Location is off.<br><b>Allow location for this page</b>':S.locErr?'No GPS signal yet.<br><b>Check location on your phone</b>':'Finding your location…')
+  el.emptyTxt.innerHTML=!S.pos?(S.locErr==='denied'?'Location is off.<br><b>Swipe or pinch once to allow it</b>':S.locErr?'No GPS signal yet.<br><b>Check location on your phone</b>':'Finding your location…')+(S.locErr&&S.locMsg?`<br><span style="font-size:16px;color:#5f8590">${esc(S.locMsg)}</span>`:'')
     :S.offline?'Can’t reach listings.<br><b>Retrying as you walk</b>'
     :`No rentals within <b>${fmtDist(S.radius)}</b>.<br>Keep walking`;
 }
@@ -955,6 +969,7 @@ function widenRange(){
   }else toast('Nothing more within '+fmtDist(S.radius));
 }
 function press(a){
+  if(S.locErr&&!S.gotFix&&!S.retried){S.retried=true;retryLocation();}
   touchInput();
   if(S.view==='look') return lookPress(a);
   if(S.view==='viewer') return viewerPress(a);
