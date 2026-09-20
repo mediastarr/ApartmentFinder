@@ -257,8 +257,8 @@ const Q=new URLSearchParams(location.search);
 const DEFAULT_API='';
 const CONFIG={
   API_URL:Q.get('api')||DEFAULT_API,
-  RADIUS_M:+(Q.get('r')||400),          // listings inside this distance are browsable
-  FETCH_RADIUS_M:1600,                  // everything within this distance is downloaded
+  RADIUS_M:+(Q.get('r')||800),          // listings inside this distance are browsable (about half a mile)
+  FETCH_RADIUS_M:3200,                  // everything within this distance is downloaded (about 2 miles); swiping past the last listing widens the range up to this
   PAGE:100,                             // listings per request; the app keeps requesting pages until done
   MAX_LISTINGS:1000,
   PEEK_MS:+(Q.get('peek')||9000),       // tile shrinks to a small pill after this much idle time (0 = never)
@@ -315,7 +315,8 @@ const S={
   vIdx:0,sheet:false,
   locked:false,lockT:0,
   fetchCenter:null,fetching:false,offline:false,
-  simOn:false,simT:0,simHeading:15,gotFix:false,locErr:null,peekT:0
+  simOn:false,simT:0,simHeading:15,gotFix:false,locErr:null,peekT:0,
+  radius:CONFIG.RADIUS_M
 };
 
 /* =====================================================================
@@ -404,6 +405,8 @@ function panoCanvas(seed,w,h){
   return c;
 }
 
+const lazyScene=(k,h,sd)=>`scene:${k}:${h}:${sd}`;
+const U=u=>{ if(typeof u==='string'&&u.startsWith('scene:')){const [,k,h,sd]=u.split(':');return scene(k,+h,+sd);} return u; };
 const DEMO_CLIPS=[
   'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
   'https://www.w3schools.com/html/mov_bbb.mp4'
@@ -422,18 +425,18 @@ const BASE_PRICE=[2300,3100,4200,5600], BASE_SQFT=[420,640,880,1150];
 function demoListings(lat,lng){
   const cell=Math.round(lat*300)+'|'+Math.round(lng*300);
   const rnd=mulberry32(hashStr(cell)), out=[];
-  for(let i=0;i<44;i++){
-    const p=offset(lat,lng,rnd()*360,500*Math.sqrt(rnd()));
+  for(let i=0;i<180;i++){
+    const p=offset(lat,lng,rnd()*360,1500*Math.sqrt(rnd()));
     const beds=[0,1,1,2,2,3][Math.floor(rnd()*6)];
     const street=STREETS[Math.floor(rnd()*STREETS.length)], num=10+Math.floor(rnd()*470);
     const price=Math.round(BASE_PRICE[beds]*(0.78+rnd()*0.5)/25)*25;
     const hue=Math.floor(rnd()*360), seed=Math.floor(rnd()*1e9);
     const amen=[...AMEN].sort(()=>rnd()-.5).slice(0,3+Math.floor(rnd()*3));
-    const media=[{type:'photo',src:scene('exterior',hue,seed),label:'Exterior'},
-                 {type:'photo',src:scene('living',hue,seed+1),label:'Living room'}];
-    if(rnd()>.35) media.push({type:'video',src:DEMO_CLIPS[Math.floor(rnd()*2)],poster:scene('living',hue,seed+9),label:'Video tour'});
-    if(beds>0) media.push({type:'photo',src:scene('bedroom',hue,seed+2),label:'Bedroom'});
-    media.push({type:'photo',src:scene('kitchen',hue,seed+3),label:'Kitchen'});
+    const media=[{type:'photo',src:lazyScene('exterior',hue,seed),label:'Exterior'},
+                 {type:'photo',src:lazyScene('living',hue,seed+1),label:'Living room'}];
+    if(rnd()>.35) media.push({type:'video',src:DEMO_CLIPS[Math.floor(rnd()*2)],poster:lazyScene('living',hue,seed+9),label:'Video tour'});
+    if(beds>0) media.push({type:'photo',src:lazyScene('bedroom',hue,seed+2),label:'Bedroom'});
+    media.push({type:'photo',src:lazyScene('kitchen',hue,seed+3),label:'Kitchen'});
     if(rnd()>.4) media.push({type:'tour360',kind:'image',src:'proc:'+seed,label:'3D tour'});
     if(CONFIG.DEMO_TOUR_VIDEO) media.push({type:'tour360',kind:'video',src:CONFIG.DEMO_TOUR_VIDEO,label:'3D video tour'});
     out.push({
@@ -537,6 +540,7 @@ function setGpsChip(){
   if(!S.pos){t=S.locErr==='denied'?'Location off':S.locErr?'No GPS signal':'Locating';warn=true;pulse=!S.locErr;}
   else if(S.offline){t='Listings offline';warn=true;}
   else if(S.src==='sim'){t='Demo walk';warn=true;}
+  else if(!CONFIG.API_URL){t='Sample data';warn=true;}
   else t='GPS'+(S.acc?' ±'+Math.round(S.acc)+' m':'');
   el.gpsTxt.textContent=t;
   el.gps.classList.toggle('warn',warn);el.gps.classList.toggle('pulse',pulse);
@@ -550,14 +554,14 @@ function recFor(l){return {l,d:dist(S.pos.lat,S.pos.lng,l.lat,l.lng),b:bearing(S
 function tick(){
   if(!S.pos) return;
   const recs=[];
-  for(const l of S.listings.values()){const r=recFor(l);if(r.d<=CONFIG.RADIUS_M) recs.push(r);}
+  for(const l of S.listings.values()){const r=recFor(l);if(r.d<=S.radius) recs.push(r);}
   recs.sort((a,b)=>a.d-b.d); S.recs=recs;
   const curRec=S.cur?recFor(S.cur):null;
   if(!S.locked&&S.view==='card'){
     const best=recs[0];
     if(!best){ if(S.cur) clearCard(); }
     else if(!S.cur) showListing(best);
-    else if(best.l.id!==S.cur.id&&(curRec.d>CONFIG.RADIUS_M||best.d+CONFIG.HYSTERESIS_M<curRec.d)) showListing(best);
+    else if(best.l.id!==S.cur.id&&(curRec.d>S.radius||best.d+CONFIG.HYSTERESIS_M<curRec.d)) showListing(best);
   }
   updateLive(); setEmpty();
 }
@@ -566,7 +570,7 @@ function setEmpty(){
   el.empty.classList.remove('gone');
   el.emptyTxt.innerHTML=!S.pos?(S.locErr==='denied'?'Location is off.<br><b>Allow location for this page</b>':S.locErr?'No GPS signal yet.<br><b>Check location on your phone</b>':'Finding your location…')
     :S.offline?'Can’t reach listings.<br><b>Retrying as you walk</b>'
-    :`No rentals within <b>${fmtDist(CONFIG.RADIUS_M)}</b>.<br>Keep walking`;
+    :`No rentals within <b>${fmtDist(S.radius)}</b>.<br>Keep walking`;
 }
 function updateLive(){
   const n=S.recs.length;
@@ -604,14 +608,14 @@ function showListing(rec){
 function mkVideo(m,strip){
   const v=document.createElement('video');
   v.muted=true;v.loop=true;v.playsInline=true;v.setAttribute('playsinline','');v.preload=strip?'none':'auto';
-  if(m.poster) v.poster=m.poster; v.src=m.src; return v;
+  if(m.poster) v.poster=U(m.poster); v.src=m.src; return v;
 }
 function tourPreview(m,big){
   if(m.kind==='image'||!m.kind){
     if(String(m.src).startsWith('proc:')) return panoCanvas(+m.src.slice(5),big?1024:512,big?512:256);
-    const im=new Image(); im.decoding='async'; im.alt=m.label||''; im.src=m.thumb||m.poster||m.src; return im;
+    const im=new Image(); im.decoding='async'; im.alt=m.label||''; im.src=U(m.thumb||m.poster||m.src); return im;
   }
-  if(m.poster||m.thumb){const im=new Image(); im.decoding='async'; im.src=m.thumb||m.poster; return im;}
+  if(m.poster||m.thumb){const im=new Image(); im.decoding='async'; im.src=U(m.thumb||m.poster); return im;}
   const d=mk('div'); d.style.cssText='width:100%;height:100%;background:radial-gradient(circle at 50% 50%,#0b2a33,#02080b)'; return d;
 }
 function buildStrip(l){
@@ -621,7 +625,7 @@ function buildStrip(l){
     const s=mk('div','slide'); s.dataset.i=i;
     if(m.type==='video'){const v=mkVideo(m,true); v.onerror=()=>s.classList.add('bad'); s.appendChild(v);}
     else if(m.type==='tour360'){s.appendChild(tourPreview(m,false));}
-    else{const im=new Image(); im.decoding='async'; im.alt=m.label||''; if(i>1) im.loading='lazy'; im.src=m.thumb||m.src; s.appendChild(im);}
+    else{const im=new Image(); im.decoding='async'; im.alt=m.label||''; if(i>1) im.loading='lazy'; im.src=U(m.thumb||m.src); s.appendChild(im);}
     if(m.label){const c=mk('div','cap');c.textContent=m.label;s.appendChild(c);}
     el.track.appendChild(s);
   });
@@ -702,9 +706,10 @@ function openViewer(i){
   el.vTrack.scrollLeft=i*el.vTrack.clientWidth; setV(i);
 }
 function detailsHTML(l){
+  const sample=String(l.id).startsWith('demo-')?'<p style="color:var(--amber);margin-top:12px">Sample listing for the demo. This is not a real apartment.</p>':'';
   const rows=[['Available',l.available],['Lease',l.lease],['Deposit',l.deposit],['Pets',l.pets],['Laundry',l.laundry],['Floor',l.floor],['Parking',l.parking]]
     .filter(r=>r[1]).map(r=>`<div><span>${r[0]}</span>${esc(r[1])}</div>`).join('');
-  return `${l.title?`<h3>${esc(l.title)}</h3>`:''}
+  return `${sample}${l.title?`<h3>${esc(l.title)}</h3>`:''}
     ${l.description?`<p>${esc(l.description)}</p>`:''}
     ${rows?`<h3>Details</h3><div class="grid">${rows}</div>`:''}
     ${l.amenities&&l.amenities.length?`<h3>Amenities</h3><div class="tags">${l.amenities.map(a=>`<i>${esc(a)}</i>`).join('')}</div>`:''}
@@ -727,7 +732,7 @@ function fillSlide(i){
     const ld=mk('div','load'); ld.textContent='Loading…'; s.appendChild(ld);
     const im=new Image(); im.decoding='async'; im.alt=m.label||'';
     im.onload=()=>ld.remove(); im.onerror=()=>{ld.textContent='Photo unavailable';};
-    im.src=m.src; s.appendChild(im);
+    im.src=U(m.src); s.appendChild(im);
   }
 }
 function setV(i){
@@ -912,8 +917,20 @@ function listingGo(d){
   if(!S.cur) return;
   const i=S.recs.findIndex(r=>r.l.id===S.cur.id);
   const ni=clamp((i<0?0:i)+d,0,S.recs.length-1);
-  if(!S.recs.length||ni===i){bump('y');return;}
+  if(!S.recs.length||ni===i){
+    if(d>0&&S.radius<CONFIG.FETCH_RADIUS_M){widenRange();return;}
+    bump('y');return;
+  }
   touchInput(); showListing(S.recs[ni]);
+}
+// Swiping past the last listing pulls in the next ring of apartments (range doubles up to FETCH_RADIUS_M)
+function widenRange(){
+  const before=S.recs.length; S.radius=Math.min(S.radius*2,CONFIG.FETCH_RADIUS_M); tick();
+  if(S.recs.length>before){
+    toast(`${S.recs.length} within ${fmtDist(S.radius)}`);
+    const i=S.recs.findIndex(r=>r.l.id===S.cur.id), nx=S.recs[Math.min(i+1,S.recs.length-1)];
+    if(nx&&nx.l.id!==S.cur.id) showListing(nx);
+  }else toast('Nothing more within '+fmtDist(S.radius));
 }
 function press(a){
   touchInput();
