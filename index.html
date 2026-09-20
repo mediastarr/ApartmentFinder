@@ -10,7 +10,7 @@
   --cyan-soft:rgba(0,229,255,.32);
   --ink:#e9fbff;
   --dim:#86aab4;
-  --panel:rgba(4,13,19,.9);
+  --panel:rgba(4,13,19,.92);
   --amber:#ffb224;
   --ease:cubic-bezier(.2,.8,.2,1);
 }
@@ -22,8 +22,7 @@ body{display:flex;align-items:center;justify-content:center}
 #stage{position:relative;width:min(100vw,600px);height:min(100vh,600px);background:#000;overflow:hidden}
 @media (min-width:640px) and (min-height:640px){#stage{outline:1px dashed rgba(0,229,255,.25)}}
 
-/* ---------- status row ---------- */
-#hud{position:absolute;top:12px;left:16px;right:16px;display:flex;justify-content:space-between;gap:8px;z-index:5}
+/* ---------- shared bits ---------- */
 .chip{display:flex;align-items:center;gap:8px;height:34px;padding:0 14px;border-radius:17px;
   background:var(--panel);border:1px solid var(--cyan-soft);font-size:17px;font-weight:600;letter-spacing:.2px;white-space:nowrap}
 .chip .dot{width:9px;height:9px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
@@ -31,74 +30,121 @@ body{display:flex;align-items:center;justify-content:center}
 .chip.warn .dot{background:var(--amber);box-shadow:0 0 8px var(--amber)}
 .chip.pulse .dot{animation:pulse 1.1s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.25}}
+.hintbar{display:flex;justify-content:space-around;align-items:center;gap:6px;font-size:16px;color:var(--dim);white-space:nowrap}
+.hintbar b{color:var(--cyan);font-weight:700;margin-right:5px}
+.price{font-size:40px;font-weight:700;line-height:1.05;color:var(--cyan);font-variant-numeric:tabular-nums;letter-spacing:-.5px;
+  text-shadow:0 0 14px rgba(0,229,255,.35)}
+.price small{font-size:20px;font-weight:500;color:var(--dim);margin-left:4px;letter-spacing:0}
+.specs{display:flex;gap:16px;margin-top:6px;font-size:21px;font-weight:600;align-items:baseline}
+.specs span+span{padding-left:16px;border-left:1px solid var(--cyan-soft)}
+.specs .t{color:var(--dim);font-weight:500}
+.addr{margin-top:3px;font-size:19px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gone{opacity:0;pointer-events:none}
+
+/* ---------- status row ---------- */
+#hud{position:absolute;top:12px;left:16px;right:16px;display:flex;justify-content:space-between;gap:8px;z-index:5;transition:opacity .5s}
+#hud.dim{opacity:.4}
 
 /* ---------- empty / scanning ---------- */
 #empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;
   text-align:center;padding:0 60px;z-index:2;transition:opacity .3s}
-#empty.gone{opacity:0;pointer-events:none}
 #empty .ring{width:92px;height:92px;border-radius:50%;border:2px solid var(--cyan-soft);position:relative}
 #empty .ring::after{content:"";position:absolute;inset:-2px;border-radius:50%;border:2px solid transparent;border-top-color:var(--cyan);animation:spin 1.4s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 #emptyTxt{font-size:24px;line-height:1.35;color:var(--dim)}
 #emptyTxt b{color:var(--ink);font-weight:600}
 
-/* ---------- card ---------- */
-#card{position:absolute;left:16px;right:16px;bottom:16px;height:352px;display:flex;flex-direction:column;overflow:hidden;
+/* ---------- card: a small floating tile (glance) that shrinks to a peek pill ---------- */
+#card{position:absolute;left:80px;right:80px;bottom:16px;height:284px;display:flex;flex-direction:column;overflow:hidden;
   background:var(--panel);border:1px solid var(--cyan-soft);border-radius:26px;outline:none;
-  box-shadow:0 0 0 1px rgba(0,229,255,.06),0 0 28px rgba(0,229,255,.14);
-  transition:height .32s var(--ease),opacity .25s,transform .25s var(--ease);z-index:3}
+  box-shadow:0 0 0 1px rgba(0,229,255,.06),0 0 28px rgba(0,229,255,.16);
+  transition:opacity .25s,transform .25s var(--ease),height .32s var(--ease),left .32s var(--ease),right .32s var(--ease);z-index:3}
 #card.hide{opacity:0;transform:translateY(24px);pointer-events:none}
-#card.exp{height:528px}
+#card.peek{left:112px;right:112px;height:84px}
+#card.peek #media{height:0;overflow:hidden}
+#card.peek .specs,#card.peek .addr{display:none}
 #card.in{animation:cardIn .34s var(--ease)}
-@keyframes cardIn{from{opacity:.0;transform:translateY(18px)}to{opacity:1;transform:none}}
+@keyframes cardIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 #card.bumpy{animation:bumpy .22s ease-out}
 @keyframes bumpy{40%{transform:translateY(-7px)}}
 #card.bumpx #media{animation:bumpx .22s ease-out}
-@keyframes bumpx{40%{transform:translateX(-7px)}}
 #card.bumpx.rev #media{animation-name:bumpxr}
+@keyframes bumpx{40%{transform:translateX(-7px)}}
 @keyframes bumpxr{40%{transform:translateX(7px)}}
 
-#media{position:relative;height:184px;flex:none;background:#03090d;transition:height .32s var(--ease)}
-#card.exp #media{height:132px}
+#media{position:relative;height:170px;flex:none;background:#03090d;transition:height .32s var(--ease)}
 #track{display:flex;height:100%;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;
   touch-action:pan-x;overscroll-behavior:contain;outline:none}
 #track::-webkit-scrollbar{display:none}
 .slide{position:relative;flex:0 0 100%;height:100%;scroll-snap-align:start;scroll-snap-stop:always;background:#03090d}
-.slide img,.slide video{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
-.slide.bad::after{content:"Video unavailable";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+.slide img,.slide video,.slide canvas{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.slide.bad::after,.vslide.bad::after{content:"Video unavailable";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   background:rgba(0,0,0,.6);color:var(--dim);font-size:20px}
-.cap{position:absolute;left:12px;bottom:12px;padding:4px 12px;border-radius:14px;background:rgba(0,0,0,.62);font-size:16px;font-weight:600}
-.badge{position:absolute;top:12px;right:12px;display:flex;align-items:center;gap:8px;padding:5px 12px;border-radius:15px;
-  background:rgba(0,0,0,.66);font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
-.badge.vid{color:#001014;background:var(--cyan)}
+.cap{position:absolute;left:10px;bottom:10px;padding:3px 12px;border-radius:14px;background:rgba(0,0,0,.66);font-size:17px;font-weight:600}
+.badge{position:absolute;top:10px;right:10px;display:flex;align-items:center;gap:8px;padding:4px 12px;border-radius:15px;
+  background:rgba(0,0,0,.66);font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
+.badge.vid,.badge.tour{color:#001014;background:var(--cyan)}
 .badge svg{width:12px;height:12px}
-#dots{position:absolute;bottom:12px;right:12px;display:flex;gap:6px}
+#dots{position:absolute;bottom:14px;right:12px;display:flex;gap:6px}
 #dots i{width:8px;height:8px;border-radius:4px;background:rgba(255,255,255,.35);transition:width .2s,background .2s}
 #dots i.on{width:22px;background:var(--cyan)}
 
-#body{flex:1;min-height:0;display:flex;flex-direction:column;padding:12px 18px 0;touch-action:none}
-#sum .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.price{font-size:40px;font-weight:700;line-height:1.05;color:var(--cyan);font-variant-numeric:tabular-nums;letter-spacing:-.5px;
-  text-shadow:0 0 14px rgba(0,229,255,.35)}
-.price small{font-size:20px;font-weight:500;color:var(--dim);margin-left:4px;letter-spacing:0}
-.where{display:flex;align-items:center;gap:12px;text-align:right}
-.where .txt{line-height:1.15}
+#body{flex:1;min-height:0;padding:10px 18px 0;touch-action:none}
+#sum .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.where{display:flex;align-items:center;gap:10px;text-align:right}
+.where .txt{line-height:1.12}
 .where b{display:block;font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
 .where em{font-style:normal;font-size:16px;color:var(--dim)}
-.compass{width:52px;height:52px;border-radius:50%;border:2px solid var(--cyan);display:flex;align-items:center;justify-content:center;
+.compass{width:48px;height:48px;border-radius:50%;border:2px solid var(--cyan);display:flex;align-items:center;justify-content:center;
   box-shadow:0 0 14px rgba(0,229,255,.35),inset 0 0 10px rgba(0,229,255,.15);flex:none}
-.compass svg{width:28px;height:28px;color:var(--cyan);transition:transform .35s var(--ease)}
-.specs{display:flex;gap:16px;margin-top:6px;font-size:21px;font-weight:600;align-items:baseline}
-.specs span+span{padding-left:16px;border-left:1px solid var(--cyan-soft)}
-.specs .t{color:var(--dim);font-weight:500}
-.addr{margin-top:3px;font-size:19px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.compass svg{width:26px;height:26px;color:var(--cyan);transition:transform .35s var(--ease)}
+#sum .specs{margin-top:4px;font-size:20px}
+#sum .addr{margin-top:2px;font-size:18px}
 
-#details{display:none;flex:1;min-height:0;overflow-y:auto;margin-top:10px;padding-bottom:16px;touch-action:pan-y;scrollbar-width:none;
-  border-top:1px solid var(--cyan-soft)}
-#details::-webkit-scrollbar{display:none}
-#card.exp #details{display:block}
-#details h3{font-size:22px;font-weight:700;margin:12px 0 8px}
-#details p{font-size:19px;line-height:1.4;color:#cfe7ee}
+/* transient gesture hint: floats above the tile for a moment after you touch the band */
+#hint{position:absolute;left:50%;transform:translateX(-50%);bottom:312px;padding:8px 20px;border-radius:22px;gap:22px;
+  background:var(--panel);border:1px solid var(--cyan-soft);opacity:0;transition:opacity .25s;z-index:4;pointer-events:none}
+#hint.on{opacity:1}
+
+/* ---------- fullscreen viewer ---------- */
+#viewer{position:absolute;inset:0;background:#000;z-index:30;visibility:hidden;opacity:0;transition:opacity .22s,visibility .22s}
+#viewer.open{visibility:visible;opacity:1}
+#vTrack{position:absolute;inset:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;
+  touch-action:pan-x;overscroll-behavior:contain;outline:none}
+#vTrack::-webkit-scrollbar{display:none}
+#vTrack.bl{animation:vbl .22s ease-out}
+#vTrack.br{animation:vbr .22s ease-out}
+@keyframes vbl{40%{transform:translateX(10px)}}
+@keyframes vbr{40%{transform:translateX(-10px)}}
+.vslide{position:relative;flex:0 0 100%;height:100%;scroll-snap-align:start;scroll-snap-stop:always;background:#000;
+  display:flex;align-items:center;justify-content:center}
+.vslide img,.vslide video,.vslide canvas{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none}
+.vslide.tour img,.vslide.tour canvas{object-fit:cover}
+.vslide .load{position:absolute;color:var(--dim);font-size:20px}
+.pill{position:absolute;left:50%;bottom:92px;transform:translateX(-50%);padding:10px 22px;border-radius:24px;white-space:nowrap;
+  background:var(--cyan);color:#001014;font-size:20px;font-weight:700;box-shadow:0 0 22px rgba(0,229,255,.45)}
+#vTop{position:absolute;top:12px;left:16px;right:16px;display:flex;justify-content:space-between;gap:8px;pointer-events:none;transition:opacity .2s}
+#vTop .chip{background:rgba(0,0,0,.72)}
+#vTop .chip.tour{background:var(--cyan);color:#001014;border-color:var(--cyan)}
+#vBar{position:absolute;left:16px;right:16px;bottom:12px;padding:10px 18px 8px;border-radius:22px;background:var(--panel);
+  border:1px solid var(--cyan-soft);transition:opacity .2s;pointer-events:none}
+#vBar .l1{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:6px}
+#vBar .p{font-size:28px;font-weight:700;color:var(--cyan);font-variant-numeric:tabular-nums}
+#vBar .p small{font-size:17px;font-weight:500;color:var(--dim);margin-left:3px}
+#vBar .s{font-size:18px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#viewer.clean #vTop,#viewer.clean #vBar,#viewer.clean .pill{opacity:0}
+#viewer.sheetopen #vBar,#viewer.sheetopen .pill{opacity:0}
+
+#sheet{position:absolute;left:0;right:0;bottom:0;height:452px;display:flex;flex-direction:column;z-index:6;
+  background:rgba(3,10,15,.985);border-top:1px solid var(--cyan-soft);border-radius:28px 28px 0 0;
+  box-shadow:0 -10px 40px rgba(0,0,0,.6);transform:translateY(104%);transition:transform .3s var(--ease)}
+#sheet.open{transform:none}
+#sheetHead{flex:none;padding:16px 22px 10px;border-bottom:1px solid var(--cyan-soft)}
+#sheetBody{flex:1;min-height:0;overflow-y:auto;padding:0 22px 14px;scrollbar-width:none;touch-action:pan-y}
+#sheetBody::-webkit-scrollbar{display:none}
+#sheetHint{flex:none;height:38px;border-top:1px solid rgba(0,229,255,.16)}
+#sheetBody h3{font-size:22px;font-weight:700;margin:14px 0 8px}
+#sheetBody p{font-size:19px;line-height:1.4;color:#cfe7ee}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin-top:2px}
 .grid div{font-size:18px;line-height:1.25}
 .grid div span{display:block;font-size:15px;color:var(--dim)}
@@ -107,9 +153,20 @@ body{display:flex;align-items:center;justify-content:center}
 .contact{margin-top:14px;padding:12px 14px;border-radius:16px;background:rgba(0,229,255,.08);border:1px solid var(--cyan-soft);font-size:19px}
 .contact span{display:block;font-size:15px;color:var(--dim)}
 
-#hint{flex:none;height:38px;display:flex;justify-content:space-around;align-items:center;
-  border-top:1px solid rgba(0,229,255,.16);font-size:16px;color:var(--dim)}
-#hint b{color:var(--cyan);font-weight:700;margin-right:5px}
+/* ---------- 3D tour ---------- */
+#look{position:absolute;inset:0;background:#000;z-index:8;visibility:hidden}
+#look.open{visibility:visible}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#lookTop{position:absolute;top:12px;left:16px;right:16px;display:flex;justify-content:space-between;pointer-events:none}
+#lookTop .chip{background:rgba(0,0,0,.72)}
+#lookTop .chip.tour{background:var(--cyan);color:#001014;border-color:var(--cyan)}
+#prog{position:absolute;top:0;left:0;height:4px;width:0;background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+#lookBar{position:absolute;left:16px;right:16px;bottom:12px;height:46px;border-radius:23px;background:var(--panel);
+  border:1px solid var(--cyan-soft);display:flex;align-items:center;padding:0 10px}
+#lookBar .hintbar{width:100%}
+#toast{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);padding:12px 24px;border-radius:26px;background:var(--panel);
+  border:1px solid var(--cyan-soft);font-size:22px;font-weight:600;opacity:0;transition:opacity .2s;z-index:50;pointer-events:none;text-align:center}
+#toast.on{opacity:1}
 
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -118,7 +175,6 @@ body{display:flex;align-items:center;justify-content:center}
 <div id="stage">
   <div id="hud">
     <div class="chip pulse warn" id="gps"><i class="dot"></i><span id="gpsTxt">Locating</span></div>
-    <div class="chip" id="mode"><i class="dot"></i><span id="modeTxt">Auto</span></div>
     <div class="chip" id="count"><span id="countTxt">0 nearby</span></div>
   </div>
 
@@ -130,12 +186,31 @@ body{display:flex;align-items:center;justify-content:center}
       <div class="badge" id="badge"></div>
       <div id="dots"></div>
     </div>
-    <div id="body">
-      <div id="sum"></div>
-      <div id="details" tabindex="0"></div>
-    </div>
-    <div id="hint"></div>
+    <div id="body"><div id="sum"></div></div>
   </section>
+  <div id="hint" class="hintbar"></div>
+
+  <!-- fullscreen media viewer: one photo / video / tour at a time -->
+  <section id="viewer" tabindex="0">
+    <div id="vTrack" tabindex="0"></div>
+    <div id="vTop"><div class="chip" id="vCap"></div><div class="chip" id="vIdx"></div></div>
+    <div id="vBar"><div class="l1"><div class="p" id="vPrice"></div><div class="s" id="vSpecs"></div></div><div class="hintbar" id="vHint"></div></div>
+
+    <div id="sheet">
+      <div id="sheetHead"></div>
+      <div id="sheetBody" tabindex="0"></div>
+      <div id="sheetHint" class="hintbar"></div>
+    </div>
+
+    <div id="look">
+      <canvas id="gl"></canvas>
+      <div id="prog"></div>
+      <div id="lookTop"><div class="chip tour" id="lookTag">360°</div><div class="chip" id="lookInfo"></div></div>
+      <div id="lookBar"><div class="hintbar" id="lHint"></div></div>
+    </div>
+  </section>
+
+  <div id="toast"></div>
 </div>
 
 <script>
@@ -143,47 +218,66 @@ body{display:flex;align-items:center;justify-content:center}
    Rent Walk — walking-distance rental explorer
    Target: Meta Ray-Ban Display (600x600, Neural Band input)
 
-   Gesture map (Neural Band arrives as arrow keys / Enter, or click):
-     swipe left / right  -> previous / next photo or video
-     swipe up / down     -> next / previous listing (scrolls details when open)
-     pinch               -> open / close full details
-     back                -> close details, or return to auto-follow
+   Card (a small floating tile while walking; shrinks to a pill when idle, first touch expands it)
+     swipe left/right  photo / video / tour strip
+     swipe up/down     previous / next listing
+     pinch             open the current item full screen
+   Full screen viewer (one item at a time)
+     swipe left/right  previous / next item
+     swipe down        details sheet     swipe up   close viewer
+     pinch             photo: hide/show overlays | video: play/pause | tour: look around
+   3D tour ("look around")
+     swipe left/right  turn      swipe down  cycle tilt      swipe up  exit
+     pinch             image tour: auto-turn on/off | video tour: play/pause
+   Back (Esc / Backspace / system back) steps out one level everywhere.
 
-   Plug in real listings: set CONFIG.API_URL (or ?api=https://.../listings).
-   The endpoint receives ?lat=&lng=&radius=<meters> and returns
-     { "listings": [ {
+   Listing JSON (from your own API, see worker.js)
+     { "listings":[ {
          "id":"abc", "title":"Sunlit 1BR", "address":"12 Elm St",
          "lat":42.35, "lng":-71.07, "price":3200,
          "beds":1, "baths":1, "sqft":700, "type":"Apartment",
-         "available":"Oct 1", "lease":"12 mo", "deposit":"1 mo",
+         "available":"Oct 1", "lease":"12 mo", "deposit":"1 month",
          "pets":"Cats OK", "laundry":"In-unit", "floor":"3", "parking":"Street",
-         "description":"...", "amenities":["Dishwasher","Roof deck"],
+         "description":"...", "amenities":["Dishwasher"],
          "contact":{"name":"Maya R.","phone":"(555) 010-2290"},
-         "media":[ {"type":"photo","src":"https://...","label":"Living room"},
-                   {"type":"video","src":"https://...mp4","poster":"https://...","label":"Tour"} ]
-     } ] }
-   Only id, lat, lng, price are required; everything else is optional.
+         "media":[
+           {"type":"photo","src":"https://.../living.jpg","thumb":"https://.../living-600.jpg","label":"Living room"},
+           {"type":"video","src":"https://.../walkthrough.mp4","poster":"https://.../poster.jpg","label":"Walkthrough"},
+           {"type":"tour360","kind":"image","src":"https://.../pano-2to1.jpg","label":"3D tour"},
+           {"type":"tour360","kind":"video","src":"https://.../tour360.mp4","poster":"https://.../p.jpg","label":"3D video tour"}
+         ] } ] }
+   tour360 = equirectangular (2:1) image or video, e.g. from a Ricoh Theta / Insta360.
+   Files used for tour360 must be served with CORS (Access-Control-Allow-Origin).
    ===================================================================== */
 (()=>{
 'use strict';
 
 const Q=new URLSearchParams(location.search);
+// Paste your Worker URL here to use real listings, e.g. 'https://rentwalk-api.YOURNAME.workers.dev/listings'
+const DEFAULT_API='';
 const CONFIG={
-  API_URL:Q.get('api')||'',            // '' = built-in demo listings
-  RADIUS_M:+(Q.get('r')||180),         // how close counts as "nearby"
-  FETCH_RADIUS_M:800,                  // area requested from the API
-  REFETCH_M:200,                       // re-query after moving this far
-  HYSTERESIS_M:15,                     // avoid flip-flopping between two similar listings
-  LOCK_MS:20000,                       // manual browsing returns to auto-follow after this idle time
-  SIM_SPEED_MPS:5,                     // simulated walk speed (demo fast-forward)
+  API_URL:Q.get('api')||DEFAULT_API,
+  RADIUS_M:+(Q.get('r')||400),          // listings inside this distance are browsable
+  FETCH_RADIUS_M:1600,                  // everything within this distance is downloaded
+  PAGE:100,                             // listings per request; the app keeps requesting pages until done
+  MAX_LISTINGS:1000,
+  PEEK_MS:+(Q.get('peek')||9000),       // tile shrinks to a small pill after this much idle time (0 = never)
+  REFETCH_M:400,
+  HYSTERESIS_M:15,
+  LOCK_MS:20000,
+  SIM_SPEED_MPS:5,
   SIM_START:{lat:+(Q.get('lat')||40.7411),lng:+(Q.get('lng')||-73.9897)},
-  FORCE_SIM:Q.get('sim')==='1'
+  FORCE_SIM:Q.get('sim')==='1',
+  DEMO_TOUR_VIDEO:Q.get('tourvideo')||'',   // optional: add an equirect video tour to every demo listing
+  TURN_DEG:30
 };
 
 const $=id=>document.getElementById(id);
-const el={gps:$('gps'),gpsTxt:$('gpsTxt'),mode:$('mode'),modeTxt:$('modeTxt'),count:$('count'),countTxt:$('countTxt'),
-  empty:$('empty'),emptyTxt:$('emptyTxt'),card:$('card'),track:$('track'),badge:$('badge'),dots:$('dots'),
-  sum:$('sum'),details:$('details'),hint:$('hint')};
+const el={hud:$('hud'),gps:$('gps'),gpsTxt:$('gpsTxt'),count:$('count'),countTxt:$('countTxt'),
+  empty:$('empty'),emptyTxt:$('emptyTxt'),card:$('card'),track:$('track'),badge:$('badge'),dots:$('dots'),sum:$('sum'),hint:$('hint'),
+  viewer:$('viewer'),vTrack:$('vTrack'),vCap:$('vCap'),vIdx:$('vIdx'),vPrice:$('vPrice'),vSpecs:$('vSpecs'),vHint:$('vHint'),
+  sheet:$('sheet'),sheetHead:$('sheetHead'),sheetBody:$('sheetBody'),sheetHint:$('sheetHint'),
+  look:$('look'),gl:$('gl'),prog:$('prog'),lookInfo:$('lookInfo'),lHint:$('lHint'),toast:$('toast')};
 
 /* ---------- geo helpers ---------- */
 const R=6371000, rad=d=>d*Math.PI/180, deg=r=>r*180/Math.PI;
@@ -211,18 +305,21 @@ function direction(b){
 }
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>'$'+Math.round(n).toLocaleString('en-US');
+const mk=(tag,cls)=>{const e=document.createElement(tag);if(cls)e.className=cls;return e;};
 
 /* ---------- state ---------- */
 const S={
   pos:null,heading:null,src:'none',acc:null,
   listings:new Map(),recs:[],cur:null,mediaIdx:0,
-  expanded:false,locked:false,lockT:0,
+  view:'card',           // 'card' | 'viewer' | 'look'
+  vIdx:0,sheet:false,
+  locked:false,lockT:0,
   fetchCenter:null,fetching:false,offline:false,
-  simOn:false,simT:0,simHeading:15,watchId:null,gotFix:false
+  simOn:false,simT:0,simHeading:15,gotFix:false,locErr:null,peekT:0
 };
 
 /* =====================================================================
-   Demo data (used when no API_URL): procedural photos + sample clips
+   Demo data (used when no API_URL): procedural stand-ins
    ===================================================================== */
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
@@ -255,7 +352,7 @@ function scene(kind,hue,seed){
         +`<rect x="230" y="196" width="300" height="52" rx="12" fill="hsl(${hue+20} 24% 30%)"/>`
         +`<rect x="252" y="214" width="96" height="36" rx="14" fill="hsl(${hue} 20% 60%)" opacity=".55"/>`
         +`<rect x="552" y="262" width="56" height="76" rx="8" fill="hsl(${hue} 18% 16%)"/><circle cx="580" cy="250" r="14" fill="hsl(42 95% 68%)" opacity=".5"/>`;
-    }else{ // kitchen
+    }else{
       g+=`<rect x="0" y="40" width="${W}" height="62" fill="hsl(${hue} 20% 16%)"/>`
         +`<rect x="0" y="250" width="${W}" height="88" fill="hsl(${hue} 18% 20%)"/>`
         +`<rect x="0" y="242" width="${W}" height="10" fill="hsl(${hue+30} 30% 34%)"/>`
@@ -264,8 +361,47 @@ function scene(kind,hue,seed){
         +`<circle cx="260" cy="156" r="12" fill="hsl(42 95% 68%)" opacity=".6"/><circle cx="350" cy="156" r="12" fill="hsl(42 95% 68%)" opacity=".6"/><circle cx="440" cy="156" r="12" fill="hsl(42 95% 68%)" opacity=".6"/>`;
     }
   }
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}">${sky}${g}</svg>`;
-  return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);
+  return 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}">${sky}${g}</svg>`);
+}
+
+/* Stand-in equirectangular room (2:1). Real tours replace this with a 360 capture. */
+const panoCache=new Map();
+function panoCanvas(seed,w,h){
+  const key=seed+'|'+w; if(w>=2048&&panoCache.has(key)) return panoCache.get(key);
+  const c=document.createElement('canvas'); c.width=w; c.height=h;
+  const x=c.getContext('2d'), r=mulberry32(seed), hue=Math.floor(r()*360), F=w/2048;
+  const g=x.createLinearGradient(0,0,0,h);
+  g.addColorStop(0,`hsl(${hue} 18% 80%)`); g.addColorStop(.28,`hsl(${hue} 20% 66%)`);
+  g.addColorStop(.34,`hsl(${hue+8} 26% 58%)`); g.addColorStop(.66,`hsl(${hue+8} 24% 46%)`);
+  g.addColorStop(.70,`hsl(${hue} 30% 26%)`); g.addColorStop(1,`hsl(${hue} 34% 14%)`);
+  x.fillStyle=g; x.fillRect(0,0,w,h);
+  for(let i=0;i<4;i++){x.fillStyle=`hsla(${hue+i*26},45%,55%,.16)`;x.fillRect(i*w/4,h*.33,w/4,h*.36);}
+  x.fillStyle='rgba(0,0,0,.35)'; for(let i=0;i<4;i++) x.fillRect(i*w/4-2*F,h*.3,4*F,h*.4);      // wall corners
+  x.fillStyle=`hsl(${hue} 20% 88%)`; x.fillRect(0,h*.675,w,7*F);                                  // baseboard
+  for(let i=0;i<4;i++){                                                                           // windows
+    const cx=(i+.5)*w/4+(r()-.5)*100*F, ww=(170+r()*90)*F, top=h*.36, hh=h*.2;
+    const wg=x.createLinearGradient(0,top,0,top+hh); wg.addColorStop(0,'hsl(48 95% 88%)'); wg.addColorStop(1,'hsl(200 70% 78%)');
+    x.fillStyle=wg; x.fillRect(cx-ww/2,top,ww,hh);
+    x.strokeStyle=`hsl(${hue} 20% 22%)`; x.lineWidth=7*F; x.strokeRect(cx-ww/2,top,ww,hh);
+    x.beginPath(); x.moveTo(cx,top); x.lineTo(cx,top+hh); x.moveTo(cx-ww/2,top+hh/2); x.lineTo(cx+ww/2,top+hh/2); x.stroke();
+  }
+  const dx=w*(.06+r()*.05); x.fillStyle=`hsl(${hue+200} 25% 20%)`; x.fillRect(dx,h*.36,130*F,h*.315);  // door
+  x.fillStyle='hsl(42 90% 66%)'; x.beginPath(); x.arc(dx+108*F,h*.53,7*F,0,7); x.fill();
+  const f1=w*.32, f2=w*.7;                                                                          // sofa + bed
+  x.fillStyle=`hsl(${hue+12} 32% 26%)`; x.fillRect(f1,h*.575,420*F,h*.12); x.fillRect(f1-22*F,h*.55,464*F,h*.05);
+  x.fillStyle=`hsl(${hue+12} 30% 34%)`; x.fillRect(f1+16*F,h*.535,388*F,h*.05);
+  x.fillStyle=`hsl(${hue+30} 26% 24%)`; x.fillRect(f2,h*.6,380*F,h*.1);
+  x.fillStyle=`hsl(${hue+30} 22% 62%)`; x.fillRect(f2+18*F,h*.575,110*F,h*.05);
+  for(let i=0;i<5;i++){const lx=(i+r()*.6)*w/5,ly=h*(.09+r()*.06);                                  // ceiling lights
+    const rg=x.createRadialGradient(lx,ly,0,lx,ly,60*F); rg.addColorStop(0,'rgba(255,240,190,.95)'); rg.addColorStop(1,'rgba(255,240,190,0)');
+    x.fillStyle=rg; x.fillRect(lx-60*F,ly-60*F,120*F,120*F);}
+  for(let i=0;i<4;i++){x.fillStyle=`hsla(${hue+i*40},50%,${30+r()*20}%,.8`+')';                    // wall art
+    x.fillRect((i+.15+r()*.5)*w/4,h*.4+r()*h*.04,(70+r()*40)*F,(90+r()*30)*F);}
+  const rug=x.createRadialGradient(w*.5,h*.94,0,w*.5,h*.94,w*.17);                                  // rug near nadir
+  rug.addColorStop(0,`hsl(${hue+150} 40% 40%)`); rug.addColorStop(1,`hsl(${hue+150} 40% 16%)`);
+  x.fillStyle=rug; x.beginPath(); x.ellipse(w*.5,h*.94,w*.17,h*.07,0,0,7); x.fill();
+  if(w>=2048) panoCache.set(key,c);
+  return c;
 }
 
 const DEMO_CLIPS=[
@@ -298,7 +434,8 @@ function demoListings(lat,lng){
     if(rnd()>.35) media.push({type:'video',src:DEMO_CLIPS[Math.floor(rnd()*2)],poster:scene('living',hue,seed+9),label:'Video tour'});
     if(beds>0) media.push({type:'photo',src:scene('bedroom',hue,seed+2),label:'Bedroom'});
     media.push({type:'photo',src:scene('kitchen',hue,seed+3),label:'Kitchen'});
-    if(rnd()>.6) media.push({type:'video',src:DEMO_CLIPS[Math.floor(rnd()*2)],poster:scene('exterior',hue,seed+8),label:'Walkthrough'});
+    if(rnd()>.4) media.push({type:'tour360',kind:'image',src:'proc:'+seed,label:'3D tour'});
+    if(CONFIG.DEMO_TOUR_VIDEO) media.push({type:'tour360',kind:'video',src:CONFIG.DEMO_TOUR_VIDEO,label:'3D video tour'});
     out.push({
       id:'demo-'+cell+'-'+i, title:`${ADJ[Math.floor(rnd()*ADJ.length)]} ${beds?beds+' bedroom':'studio'}`,
       address:`${num} ${street}`, lat:p.lat, lng:p.lng, price, beds,
@@ -318,26 +455,43 @@ function demoListings(lat,lng){
 /* =====================================================================
    Listings source
    ===================================================================== */
-async function fromApi(lat,lng){
-  const u=new URL(CONFIG.API_URL,location.href);
-  u.searchParams.set('lat',lat.toFixed(6));u.searchParams.set('lng',lng.toFixed(6));u.searchParams.set('radius',CONFIG.FETCH_RADIUS_M);
-  const r=await fetch(u,{cache:'no-store'});
-  if(!r.ok) throw new Error('HTTP '+r.status);
-  const j=await r.json();
-  return (Array.isArray(j)?j:(j.listings||[])).filter(l=>l&&l.id!=null&&isFinite(l.lat)&&isFinite(l.lng)&&isFinite(l.price))
-    .map(l=>({...l,id:String(l.id),media:Array.isArray(l.media)&&l.media.length?l.media:[{type:'photo',src:scene('exterior',200,hashStr(String(l.id))),label:'No photos yet'}]}));
+const normMedia=m=>{
+  if(!m||!m.src) return null;
+  const t=m.type==='video'?'video':(m.type==='tour360'||m.type==='tour'||m.type==='pano')?'tour360':'photo';
+  return {...m,type:t,kind:t==='tour360'?(m.kind||(/\.(mp4|webm|mov|m4v)(\?|$)/i.test(m.src)?'video':'image')):undefined};
+};
+const normListing=l=>{
+  if(!(l&&l.id!=null&&isFinite(l.lat)&&isFinite(l.lng)&&isFinite(l.price))) return null;
+  const media=(Array.isArray(l.media)?l.media:[]).map(normMedia).filter(Boolean);
+  return {...l,id:String(l.id),media:media.length?media:[{type:'photo',src:scene('exterior',200,hashStr(String(l.id))),label:'No photos yet'}]};
+};
+// Pulls every page (nearest first) and hands each page to onPage as it arrives
+async function fromApi(lat,lng,onPage){
+  let cursor=0,total=0;
+  while(total<CONFIG.MAX_LISTINGS){
+    const u=new URL(CONFIG.API_URL,location.href);
+    u.searchParams.set('lat',lat.toFixed(6));u.searchParams.set('lng',lng.toFixed(6));
+    u.searchParams.set('radius',CONFIG.FETCH_RADIUS_M);u.searchParams.set('limit',CONFIG.PAGE);u.searchParams.set('cursor',cursor);
+    const r=await fetch(u,{cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const j=await r.json();
+    const arr=(Array.isArray(j)?j:(j.listings||[])).map(normListing).filter(Boolean);
+    total+=arr.length; onPage(arr);
+    if(Array.isArray(j)||j.next==null||!arr.length) break;
+    cursor=j.next;
+  }
 }
 async function loadListings(){
   if(S.fetching||!S.pos) return;
   S.fetching=true;
   const {lat,lng}=S.pos; S.fetchCenter={lat,lng};
+  const add=items=>{items.forEach(l=>S.listings.set(l.id,l)); tick();};
   try{
-    const items=CONFIG.API_URL?await fromApi(lat,lng):demoListings(lat,lng);
+    if(CONFIG.API_URL) await fromApi(lat,lng,add); else add(demoListings(lat,lng));
     S.offline=false;
-    items.forEach(l=>S.listings.set(l.id,l));
   }catch(e){ S.offline=true; }
-  for(const [id,l] of S.listings){ // drop listings far behind us
-    if((!S.cur||S.cur.id!==id)&&dist(S.pos.lat,S.pos.lng,l.lat,l.lng)>1500) S.listings.delete(id);
+  for(const [id,l] of S.listings){
+    if((!S.cur||S.cur.id!==id)&&dist(S.pos.lat,S.pos.lng,l.lat,l.lng)>CONFIG.FETCH_RADIUS_M*2) S.listings.delete(id);
   }
   S.fetching=false; setGpsChip(); tick();
 }
@@ -356,12 +510,16 @@ function onFix(lat,lng,hdg,acc,src){
   tick();
 }
 function startGPS(){
-  if(CONFIG.FORCE_SIM||!('geolocation' in navigator)){startSim();return;}
-  S.watchId=navigator.geolocation.watchPosition(
-    p=>{S.gotFix=true;onFix(p.coords.latitude,p.coords.longitude,p.coords.heading,p.coords.accuracy,'gps');},
-    ()=>{ if(!S.gotFix&&!S.simOn) startSim(); },
+  const demo=!CONFIG.API_URL;   // demo data can fall back to a simulated walk; real listings never do
+  if(CONFIG.FORCE_SIM||!('geolocation' in navigator)){
+    if(CONFIG.FORCE_SIM||demo) startSim(); else {S.locErr='unavailable';setGpsChip();setEmpty();}
+    return;
+  }
+  navigator.geolocation.watchPosition(
+    p=>{S.gotFix=true;S.locErr=null;onFix(p.coords.latitude,p.coords.longitude,p.coords.heading,p.coords.accuracy,'gps');},
+    err=>{S.locErr=err.code===1?'denied':'unavailable';setGpsChip();setEmpty(); if(!S.gotFix&&!S.simOn&&demo) startSim();},
     {enableHighAccuracy:true,maximumAge:2000,timeout:20000});
-  setTimeout(()=>{ if(!S.gotFix&&!S.simOn) startSim(); },10000);
+  if(demo) setTimeout(()=>{ if(!S.gotFix&&!S.simOn) startSim(); },10000);
 }
 function startSim(){
   if(S.simOn) return; S.simOn=true;
@@ -374,20 +532,16 @@ function startSim(){
   },1000);
 }
 function stopSim(){ clearInterval(S.simT); S.simOn=false; }
-
 function setGpsChip(){
   let t,warn=false,pulse=false;
-  if(!S.pos){t='Locating';warn=true;pulse=true;}
+  if(!S.pos){t=S.locErr==='denied'?'Location off':S.locErr?'No GPS signal':'Locating';warn=true;pulse=!S.locErr;}
   else if(S.offline){t='Listings offline';warn=true;}
   else if(S.src==='sim'){t='Demo walk';warn=true;}
   else t='GPS'+(S.acc?' ±'+Math.round(S.acc)+' m':'');
   el.gpsTxt.textContent=t;
   el.gps.classList.toggle('warn',warn);el.gps.classList.toggle('pulse',pulse);
 }
-function setMode(){
-  el.modeTxt.textContent=S.locked?'Browsing':'Following';
-  el.mode.classList.toggle('warn',S.locked);
-}
+function setMode(){ el.count.classList.toggle('warn',S.locked); updateLive(); }
 
 /* =====================================================================
    Update loop: pick what the card shows
@@ -398,53 +552,154 @@ function tick(){
   const recs=[];
   for(const l of S.listings.values()){const r=recFor(l);if(r.d<=CONFIG.RADIUS_M) recs.push(r);}
   recs.sort((a,b)=>a.d-b.d); S.recs=recs;
-
   const curRec=S.cur?recFor(S.cur):null;
-  if(!S.locked&&!S.expanded){
+  if(!S.locked&&S.view==='card'){
     const best=recs[0];
     if(!best){ if(S.cur) clearCard(); }
     else if(!S.cur) showListing(best);
     else if(best.l.id!==S.cur.id&&(curRec.d>CONFIG.RADIUS_M||best.d+CONFIG.HYSTERESIS_M<curRec.d)) showListing(best);
   }
-  updateLive();
-  setEmpty();
+  updateLive(); setEmpty();
 }
 function setEmpty(){
   if(S.cur){el.empty.classList.add('gone');return;}
   el.empty.classList.remove('gone');
-  el.emptyTxt.innerHTML=!S.pos?'Finding your location…'
+  el.emptyTxt.innerHTML=!S.pos?(S.locErr==='denied'?'Location is off.<br><b>Allow location for this page</b>':S.locErr?'No GPS signal yet.<br><b>Check location on your phone</b>':'Finding your location…')
     :S.offline?'Can’t reach listings.<br><b>Retrying as you walk</b>'
     :`No rentals within <b>${fmtDist(CONFIG.RADIUS_M)}</b>.<br>Keep walking`;
 }
 function updateLive(){
   const n=S.recs.length;
+  const pre=S.locked?'Browsing ':'';
   if(!S.cur){el.countTxt.textContent=n+' nearby';return;}
   const r=recFor(S.cur), i=S.recs.findIndex(x=>x.l.id===S.cur.id);
-  el.countTxt.textContent=i>=0?`${i+1} of ${n}`:`${n} nearby`;
+  el.countTxt.textContent=pre+(i>=0?`${i+1} of ${n}`:`${n} nearby`);
   const d=$('dTxt'),w=$('dDir'),a=$('arrow');
   if(d){d.textContent=fmtDist(r.d);w.textContent=direction(r.b);
     a.style.transform=`rotate(${S.heading==null?r.b:((r.b-S.heading+360)%360)}deg)`;}
 }
 
 /* =====================================================================
-   Rendering
+   Card rendering
    ===================================================================== */
+const specsHTML=(l,full)=>`<span>${l.beds===0?'Studio':esc(l.beds)+' bd'}</span>${l.baths!=null?`<span>${esc(l.baths)} ba</span>`:''}${l.sqft?`<span>${Number(l.sqft).toLocaleString('en-US')} ft²</span>`:''}${full&&l.type?`<span class="t">${esc(l.type)}</span>`:''}`;
+const specsShort=l=>[l.beds===0?'Studio':l.beds+' bd',l.baths!=null?l.baths+' ba':'',l.sqft?Number(l.sqft).toLocaleString('en-US')+' ft²':''].filter(Boolean).join('   ');
+
 let io=null;
 function showListing(rec){
-  const l=rec.l; S.cur=l; S.mediaIdx=0;
+  const l=rec.l; S.cur=l; S.mediaIdx=0; S.vIdx=0;
   el.sum.innerHTML=`
     <div class="row">
       <div class="price">${money(l.price)}<small>/mo</small></div>
       <div class="where"><div class="txt"><b id="dTxt"></b><em id="dDir"></em></div>
         <div class="compass"><svg id="arrow" viewBox="0 0 24 24"><path d="M12 2 20 21 12 16.5 4 21Z" fill="currentColor"/></svg></div></div>
     </div>
-    <div class="specs"><span>${l.beds===0?'Studio':esc(l.beds)+' bd'}</span>${l.baths!=null?`<span>${esc(l.baths)} ba</span>`:''}${l.sqft?`<span>${Number(l.sqft).toLocaleString('en-US')} ft²</span>`:''}${l.type?`<span class="t">${esc(l.type)}</span>`:''}</div>
+    <div class="specs">${specsHTML(l,false)}</div>
     <div class="addr">${esc(l.address||l.title||'')}</div>`;
-  el.details.innerHTML=detailsHTML(l);
-  el.details.scrollTop=0;
-  buildMedia(l);
+  buildStrip(l);
   el.card.classList.remove('hide','in'); void el.card.offsetWidth; el.card.classList.add('in');
-  renderHint(); updateLive();
+  renderHints(); updateLive(); wake();
+  if(!S.hinted){S.hinted=true;hintPop(4000);}
+}
+function mkVideo(m,strip){
+  const v=document.createElement('video');
+  v.muted=true;v.loop=true;v.playsInline=true;v.setAttribute('playsinline','');v.preload=strip?'none':'auto';
+  if(m.poster) v.poster=m.poster; v.src=m.src; return v;
+}
+function tourPreview(m,big){
+  if(m.kind==='image'||!m.kind){
+    if(String(m.src).startsWith('proc:')) return panoCanvas(+m.src.slice(5),big?1024:512,big?512:256);
+    const im=new Image(); im.decoding='async'; im.alt=m.label||''; im.src=m.thumb||m.poster||m.src; return im;
+  }
+  if(m.poster||m.thumb){const im=new Image(); im.decoding='async'; im.src=m.thumb||m.poster; return im;}
+  const d=mk('div'); d.style.cssText='width:100%;height:100%;background:radial-gradient(circle at 50% 50%,#0b2a33,#02080b)'; return d;
+}
+function buildStrip(l){
+  if(io) io.disconnect();
+  el.track.innerHTML='';
+  l.media.forEach((m,i)=>{
+    const s=mk('div','slide'); s.dataset.i=i;
+    if(m.type==='video'){const v=mkVideo(m,true); v.onerror=()=>s.classList.add('bad'); s.appendChild(v);}
+    else if(m.type==='tour360'){s.appendChild(tourPreview(m,false));}
+    else{const im=new Image(); im.decoding='async'; im.alt=m.label||''; if(i>1) im.loading='lazy'; im.src=m.thumb||m.src; s.appendChild(im);}
+    if(m.label){const c=mk('div','cap');c.textContent=m.label;s.appendChild(c);}
+    el.track.appendChild(s);
+  });
+  el.track.scrollLeft=0;
+  el.dots.innerHTML=l.media.length>1&&l.media.length<=10?l.media.map(()=>'<i></i>').join(''):'';
+  io=new IntersectionObserver(es=>es.forEach(e=>{
+    const s=e.target,v=s.querySelector('video');
+    if(e.isIntersecting&&e.intersectionRatio>=.6){setMedia(+s.dataset.i);if(v&&S.view==='card')v.play().catch(()=>{});}
+    else if(v) v.pause();
+  }),{root:el.track,threshold:[.6]});
+  [...el.track.children].forEach(s=>io.observe(s));
+  setMedia(0);
+}
+const PLAY='<svg viewBox="0 0 12 12"><path d="M2 1 11 6 2 11Z" fill="currentColor"/></svg>';
+function badgeHTML(m,i,n){return (m.type==='video'?PLAY:m.type==='tour360'?'360°':'')+` ${i+1}/${n}`;}
+function setMedia(i){
+  S.mediaIdx=i; const m=S.cur.media[i], n=S.cur.media.length;
+  el.badge.className='badge'+(m.type==='video'?' vid':m.type==='tour360'?' tour':'');
+  el.badge.innerHTML=badgeHTML(m,i,n);
+  [...el.dots.children].forEach((d,k)=>d.classList.toggle('on',k===i));
+  renderHints();
+}
+function clearCard(){
+  S.cur=null; el.card.classList.add('hide');
+  el.track.querySelectorAll('video').forEach(v=>v.pause());
+  updateLive();
+}
+function stripVideos(play){
+  el.track.querySelectorAll('.slide').forEach(s=>{const v=s.querySelector('video'); if(!v) return;
+    if(play&&+s.dataset.i===S.mediaIdx) v.play().catch(()=>{}); else v.pause();});
+}
+
+/* ---------- glance -> peek: keep the field of view clear when idle ---------- */
+function wake(){
+  el.card.classList.remove('peek'); el.hud.classList.remove('dim'); clearTimeout(S.peekT);
+  if(CONFIG.PEEK_MS>0&&S.view==='card') S.peekT=setTimeout(goPeek,CONFIG.PEEK_MS);
+  if(S.cur) stripVideos(true);
+}
+function goPeek(){
+  if(S.view!=='card'||!S.cur) return;
+  el.card.classList.add('peek'); el.hud.classList.add('dim'); stripVideos(false);
+}
+let hintT=0;
+function hintPop(ms){el.hint.classList.add('on');clearTimeout(hintT);hintT=setTimeout(()=>el.hint.classList.remove('on'),ms||2600);}
+
+/* =====================================================================
+   Hints (change with what is on screen)
+   ===================================================================== */
+const H=(k,t)=>`<span><b>${k}</b>${t}</span>`;
+function renderHints(){
+  el.hint.innerHTML=H('◀ ▶','Media')+H('▲ ▼','Listings')+H('Pinch','Open');
+  if(!S.cur) return;
+  const m=S.cur.media[S.vIdx]||S.cur.media[0];
+  const act=m.type==='video'?'Play/pause':m.type==='tour360'?'Look around':(el.viewer.classList.contains('clean')?'Show info':'Hide info');
+  el.vHint.innerHTML=H('◀ ▶','Browse')+H('▲','Close')+H('▼','Details')+H('Pinch',act);
+  el.sheetHint.innerHTML=H('▲ ▼','Scroll')+H('Back','Close');
+  const vid=m.kind==='video';
+  el.lHint.innerHTML=H('◀ ▶','Turn')+H('▼','Tilt')+H('▲','Exit')+H('Pinch',vid?'Play/pause':'Auto-turn');
+}
+
+/* =====================================================================
+   Fullscreen viewer
+   ===================================================================== */
+let vIO=null, hist=0, ignorePop=0;
+function pushView(){try{history.pushState({rw:1},'');hist++;}catch(e){}}
+function popView(){if(hist>0){hist--;ignorePop++;try{history.back();}catch(e){ignorePop--;}}}
+
+function openViewer(i){
+  if(!S.cur||S.view!=='card') return;
+  S.view='viewer'; S.sheet=false; touchInput(); clearTimeout(S.peekT); el.hint.classList.remove('on'); stripVideos(false); pushView();
+  const l=S.cur;
+  el.vPrice.innerHTML=`${money(l.price)}<small>/mo</small>`; el.vSpecs.textContent=specsShort(l);
+  el.sheetHead.innerHTML=`<div class="price">${money(l.price)}<small>/mo</small></div><div class="specs">${specsHTML(l,true)}</div><div class="addr">${esc(l.address||'')}</div>`;
+  el.sheetBody.innerHTML=detailsHTML(l); el.sheetBody.scrollTop=0;
+  el.sheet.classList.remove('open'); el.viewer.classList.remove('sheetopen','clean');
+  buildViewer(l);
+  el.viewer.classList.add('open');
+  el.vTrack.scrollLeft=i*el.vTrack.clientWidth; setV(i);
 }
 function detailsHTML(l){
   const rows=[['Available',l.available],['Lease',l.lease],['Deposit',l.deposit],['Pets',l.pets],['Laundry',l.laundry],['Floor',l.floor],['Parking',l.parking]]
@@ -455,131 +710,303 @@ function detailsHTML(l){
     ${l.amenities&&l.amenities.length?`<h3>Amenities</h3><div class="tags">${l.amenities.map(a=>`<i>${esc(a)}</i>`).join('')}</div>`:''}
     ${l.contact?`<div class="contact"><span>Leasing contact</span>${esc(l.contact.name||'')} ${esc(l.contact.phone||'')}</div>`:''}`;
 }
-function buildMedia(l){
-  if(io) io.disconnect();
-  el.track.innerHTML='';
-  l.media.forEach((m,i)=>{
-    const s=document.createElement('div'); s.className='slide'; s.dataset.i=i;
-    if(m.type==='video'){
-      const v=document.createElement('video');
-      v.muted=true;v.loop=true;v.playsInline=true;v.preload='metadata';v.setAttribute('playsinline','');
-      if(m.poster) v.poster=m.poster;
-      v.src=m.src; v.onerror=()=>s.classList.add('bad');
-      s.appendChild(v);
-    }else{
-      const im=new Image(); im.decoding='async'; im.alt=m.label||''; im.src=m.src; s.appendChild(im);
-    }
-    if(m.label){const c=document.createElement('div');c.className='cap';c.textContent=m.label;s.appendChild(c);}
-    el.track.appendChild(s);
-  });
-  el.track.scrollLeft=0;
-  el.dots.innerHTML=l.media.length>1&&l.media.length<=10?l.media.map(()=>'<i></i>').join(''):'';
-  io=new IntersectionObserver(es=>es.forEach(e=>{
-    const s=e.target,v=s.querySelector('video');
-    if(e.isIntersecting&&e.intersectionRatio>=.6){setMedia(+s.dataset.i);if(v)v.play().catch(()=>{});}
-    else if(v) v.pause();
-  }),{root:el.track,threshold:[.6]});
-  [...el.track.children].forEach(s=>io.observe(s));
-  setMedia(0);
+function buildViewer(l){
+  if(vIO) vIO.disconnect();
+  el.vTrack.innerHTML='';
+  l.media.forEach((m,i)=>{const s=mk('div','vslide'+(m.type==='tour360'?' tour':'')); s.dataset.i=i; el.vTrack.appendChild(s);});
+  vIO=new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting&&e.intersectionRatio>=.6) setV(+e.target.dataset.i); }),
+    {root:el.vTrack,threshold:[.6]});
+  [...el.vTrack.children].forEach(s=>vIO.observe(s));
 }
-function setMedia(i){
-  S.mediaIdx=i; const m=S.cur.media[i], n=S.cur.media.length, vid=m.type==='video';
-  el.badge.className='badge'+(vid?' vid':'');
-  el.badge.innerHTML=(vid?'<svg viewBox="0 0 12 12"><path d="M2 1 11 6 2 11Z" fill="currentColor"/></svg>':'')+`${i+1}/${n}`;
-  [...el.dots.children].forEach((d,k)=>d.classList.toggle('on',k===i));
+function fillSlide(i){
+  const s=el.vTrack.children[i]; if(!s||s.dataset.ready) return; s.dataset.ready='1';
+  const m=S.cur.media[i];
+  if(m.type==='video'){const v=mkVideo(m,false); v.onerror=()=>s.classList.add('bad'); s.appendChild(v);}
+  else if(m.type==='tour360'){s.appendChild(tourPreview(m,true)); const p=mk('div','pill'); p.textContent='Pinch to look around'; s.appendChild(p);}
+  else{
+    const ld=mk('div','load'); ld.textContent='Loading…'; s.appendChild(ld);
+    const im=new Image(); im.decoding='async'; im.alt=m.label||'';
+    im.onload=()=>ld.remove(); im.onerror=()=>{ld.textContent='Photo unavailable';};
+    im.src=m.src; s.appendChild(im);
+  }
 }
-function renderHint(){
-  el.hint.innerHTML=S.expanded
-    ?'<span><b>◀ ▶</b>Media</span><span><b>▲ ▼</b>Scroll</span><span><b>Back</b>Close</span>'
-    :'<span><b>◀ ▶</b>Media</span><span><b>▲ ▼</b>Listings</span><span><b>Pinch</b>Details</span>';
+function setV(i){
+  if(!S.cur) return;
+  S.vIdx=i; S.mediaIdx=i; [i-1,i,i+1].forEach(fillSlide);
+  const m=S.cur.media[i], n=S.cur.media.length;
+  el.vCap.textContent=m.label||(m.type==='video'?'Video':m.type==='tour360'?'3D tour':'Photo');
+  el.vIdx.className='chip'+(m.type==='tour360'?' tour':''); el.vIdx.innerHTML=badgeHTML(m,i,n);
+  [...el.vTrack.children].forEach((s,k)=>{const v=s.querySelector('video'); if(!v) return;
+    if(k===i&&S.view==='viewer') v.play().catch(()=>{}); else v.pause();});
+  renderHints();
 }
-function clearCard(){
-  S.cur=null; S.expanded=false; el.card.classList.remove('exp'); el.card.classList.add('hide');
-  el.track.querySelectorAll('video').forEach(v=>v.pause());
-  updateLive();
+function vGo(d){
+  const n=S.cur.media.length, ni=clamp(S.vIdx+d,0,n-1);
+  el.viewer.classList.remove('clean');
+  if(ni===S.vIdx){el.vTrack.classList.remove('bl','br');void el.vTrack.offsetWidth;el.vTrack.classList.add(d<0?'bl':'br');return;}
+  el.vTrack.scrollTo({left:ni*el.vTrack.clientWidth,behavior:'smooth'});
+}
+function setSheet(on){
+  S.sheet=on; el.sheet.classList.toggle('open',on); el.viewer.classList.toggle('sheetopen',on);
+  if(on) el.sheetBody.scrollTop=0;
+}
+function closeViewer(fromPop){
+  if(S.view==='look') exitLook(!!fromPop);
+  S.view='card'; S.sheet=false; setSheet(false); el.viewer.classList.remove('open','clean');
+  [...el.vTrack.querySelectorAll('video')].forEach(v=>v.pause());
+  if(!fromPop) popView();
+  el.track.scrollLeft=S.vIdx*el.track.clientWidth; S.mediaIdx=S.vIdx; setMedia(S.vIdx); wake();
 }
 
 /* =====================================================================
-   Input
+   3D tour: equirectangular image or video on a WebGL "look around" view
+   ===================================================================== */
+const T={gl:null,prog:null,tex:null,loc:{},maxTex:2048,src:null,proxy:null,video:null,
+  yaw:0,pitch:0,ty:0,tp:0,fov:78,raf:0,spin:true,last:0,lastT:-1,tiltStep:0,ready:false,token:0};
+const VS='attribute vec2 a;varying vec2 v;void main(){v=a*.5+.5;gl_Position=vec4(a,0.,1.);}';
+const FS=`#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+varying vec2 v;uniform sampler2D t;uniform vec2 res;uniform float yaw,pitch,tn;
+void main(){
+  vec2 p=v*2.-1.;p.x*=res.x/res.y;
+  vec3 d=normalize(vec3(p.x*tn,p.y*tn,1.));
+  float cp=cos(pitch),sp=sin(pitch);d=vec3(d.x,d.y*cp+d.z*sp,-d.y*sp+d.z*cp);
+  float cy=cos(yaw),sy=sin(yaw);d=vec3(d.x*cy+d.z*sy,d.y,-d.x*sy+d.z*cy);
+  float lon=atan(d.x,d.z),lat=asin(clamp(d.y,-1.,1.));
+  gl_FragColor=texture2D(t,vec2(lon/6.2831853+.5,.5+lat/3.14159265));
+}`;
+function glInit(){
+  if(T.gl) return true;
+  const gl=el.gl.getContext('webgl',{antialias:false,alpha:false})||el.gl.getContext('experimental-webgl');
+  if(!gl) return false;
+  const sh=(type,src)=>{const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);
+    if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));return s;};
+  try{
+    const p=gl.createProgram(); gl.attachShader(p,sh(gl.VERTEX_SHADER,VS)); gl.attachShader(p,sh(gl.FRAGMENT_SHADER,FS));
+    gl.linkProgram(p); if(!gl.getProgramParameter(p,gl.LINK_STATUS)) throw new Error('link');
+    gl.useProgram(p);
+    const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b);
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+    const a=gl.getAttribLocation(p,'a'); gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a,2,gl.FLOAT,false,0,0);
+    ['t','res','yaw','pitch','tn'].forEach(n=>T.loc[n]=gl.getUniformLocation(p,n));
+    T.maxTex=gl.getParameter(gl.MAX_TEXTURE_SIZE)||2048; T.gl=gl; T.prog=p; return true;
+  }catch(e){ return false; }
+}
+function loadTourSource(m){
+  return new Promise((res,rej)=>{
+    if(m.kind==='video'){
+      const v=document.createElement('video'); v.crossOrigin='anonymous'; v.muted=true; v.loop=true; v.playsInline=true;
+      v.setAttribute('playsinline',''); v.preload='auto'; let done=false;
+      const ok=()=>{if(!done){done=true;res(v);}};
+      v.addEventListener('loadeddata',ok); v.addEventListener('canplay',ok);
+      v.onerror=()=>rej(new Error('video')); setTimeout(()=>{if(!done)rej(new Error('timeout'));},20000);
+      v.src=m.src; v.load(); return;
+    }
+    if(String(m.src).startsWith('proc:')){res(panoCanvas(+m.src.slice(5),2048,1024));return;}
+    const im=new Image(); im.crossOrigin='anonymous'; im.onload=()=>res(im); im.onerror=()=>rej(new Error('image')); im.src=m.src;
+  });
+}
+function srcSize(s){return [s.videoWidth||s.naturalWidth||s.width, s.videoHeight||s.naturalHeight||s.height];}
+function uploadTex(){
+  const gl=T.gl; let s=T.src; const [w,h]=srcSize(s);
+  if(w>T.maxTex||h>T.maxTex){ // too big for this GPU: scale into a proxy canvas
+    const k=Math.min(T.maxTex/w,T.maxTex/h);
+    if(!T.proxy) T.proxy=document.createElement('canvas');
+    T.proxy.width=Math.floor(w*k); T.proxy.height=Math.floor(h*k);
+    T.proxy.getContext('2d').drawImage(s,0,0,T.proxy.width,T.proxy.height); s=T.proxy;
+  }
+  gl.bindTexture(gl.TEXTURE_2D,T.tex);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,s);
+}
+async function enterLook(){
+  const m=S.cur.media[S.vIdx]; if(m.type!=='tour360') return;
+  if(!glInit()){toast('3D view isn’t supported here');return;}
+  S.view='look'; pushView(); const tok=++T.token;
+  el.look.classList.add('open'); el.lookInfo.textContent=m.label||'3D tour'; el.prog.style.width='0';
+  T.yaw=T.ty=T.pitch=T.tp=0; T.tiltStep=0; T.spin=m.kind!=='video'; T.ready=false; T.lastT=-1; T.video=null;
+  toast('Loading tour…',true);
+  try{
+    const src=await loadTourSource(m); if(tok!==T.token) return;
+    T.src=src; T.video=m.kind==='video'?src:null;
+    const gl=T.gl; T.tex=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,T.tex);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    if(T.video) await T.video.play().catch(()=>{});
+    uploadTex(); T.ready=true; toast('');
+    T.last=performance.now(); cancelAnimationFrame(T.raf); T.raf=requestAnimationFrame(frame);
+    renderHints();
+  }catch(e){
+    if(tok!==T.token) return;
+    toast('Can’t load this tour'); setTimeout(()=>{ if(S.view==='look'&&!T.ready) exitLook(); },900);
+  }
+}
+function frame(now){
+  T.raf=requestAnimationFrame(frame);
+  const dt=Math.min(.05,(now-T.last)/1000||.016); T.last=now;
+  if(T.spin&&!T.video) T.ty+=8*dt;
+  const k=1-Math.exp(-dt*9); T.yaw+=(T.ty-T.yaw)*k; T.pitch+=(T.tp-T.pitch)*k;
+  const gl=T.gl, dpr=Math.min(window.devicePixelRatio||1,1.5);
+  const w=Math.round(el.gl.clientWidth*dpr), h=Math.round(el.gl.clientHeight*dpr);
+  if(el.gl.width!==w||el.gl.height!==h){el.gl.width=w;el.gl.height=h;}
+  const v=T.video;
+  if(v){
+    if(v.readyState>=2&&v.currentTime!==T.lastT){
+      T.lastT=v.currentTime;
+      try{uploadTex();}catch(e){toast('Video blocked (needs CORS)');exitLook();return;}
+    }
+    if(v.duration) el.prog.style.width=(v.currentTime/v.duration*100)+'%';
+  }
+  gl.viewport(0,0,w,h); gl.useProgram(T.prog); gl.bindTexture(gl.TEXTURE_2D,T.tex); gl.uniform1i(T.loc.t,0);
+  gl.uniform2f(T.loc.res,w,h); gl.uniform1f(T.loc.yaw,rad(T.yaw)); gl.uniform1f(T.loc.pitch,rad(T.pitch));
+  gl.uniform1f(T.loc.tn,Math.tan(rad(T.fov)/2)); gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+}
+function exitLook(fromPop){
+  T.token++; cancelAnimationFrame(T.raf);
+  if(T.video){T.video.pause();T.video.removeAttribute('src');T.video.load();T.video=null;}
+  if(T.gl&&T.tex){T.gl.deleteTexture(T.tex);T.tex=null;}
+  T.src=null; T.ready=false; el.look.classList.remove('open'); toast('');
+  if(S.view==='look'){S.view='viewer'; if(!fromPop) popView();}
+  renderHints();
+}
+function lookTurn(d){T.spin=false;T.ty+=d;}
+const TILTS=[0,-28,28];
+function lookTilt(){T.tiltStep=(T.tiltStep+1)%3;T.tp=TILTS[T.tiltStep];toast(['Level','Looking down','Looking up'][T.tiltStep]);}
+function lookOk(){
+  if(!T.ready) return;
+  if(T.video){ if(T.video.paused){T.video.play().catch(()=>{});toast('Playing');}else{T.video.pause();toast('Paused');} }
+  else{ T.spin=!T.spin; toast(T.spin?'Auto-turn on':'Auto-turn off'); }
+}
+let toastT=0;
+function toast(t,keep){
+  clearTimeout(toastT);
+  if(!t){el.toast.classList.remove('on');return;}
+  el.toast.textContent=t; el.toast.classList.add('on');
+  if(!keep) toastT=setTimeout(()=>el.toast.classList.remove('on'),1300);
+}
+
+/* =====================================================================
+   Input: everything funnels into press(L | R | U | D | ok | back)
    ===================================================================== */
 function touchInput(){
   S.locked=true; clearTimeout(S.lockT); S.lockT=setTimeout(unlock,CONFIG.LOCK_MS); setMode();
 }
 function unlock(){
-  clearTimeout(S.lockT); S.locked=false;
-  if(S.expanded) setExpanded(false);
-  setMode(); tick();
+  if(S.view!=='card'){touchInput();return;}   // never yank the viewer away
+  clearTimeout(S.lockT); S.locked=false; setMode(); tick();
 }
 function bump(axis,rev){
   el.card.classList.remove('bumpx','bumpy','rev'); void el.card.offsetWidth;
   el.card.classList.add(axis==='x'?'bumpx':'bumpy'); if(rev) el.card.classList.add('rev');
 }
-function media(dir){
+function stripGo(d){
   if(!S.cur) return; touchInput();
-  const ni=clamp(S.mediaIdx+dir,0,S.cur.media.length-1);
-  if(ni===S.mediaIdx){bump('x',dir<0);return;}
+  const ni=clamp(S.mediaIdx+d,0,S.cur.media.length-1);
+  if(ni===S.mediaIdx){bump('x',d<0);return;}
   el.track.scrollTo({left:ni*el.track.clientWidth,behavior:'smooth'});
 }
-function nav(dir){ // dir>0: next (farther) listing, dir<0: previous (nearer)
+function listingGo(d){
   if(!S.cur) return;
-  if(S.expanded){touchInput();el.details.scrollBy({top:dir*150,behavior:'smooth'});return;}
   const i=S.recs.findIndex(r=>r.l.id===S.cur.id);
-  const ni=clamp((i<0?0:i)+dir,0,S.recs.length-1);
+  const ni=clamp((i<0?0:i)+d,0,S.recs.length-1);
   if(!S.recs.length||ni===i){bump('y');return;}
   touchInput(); showListing(S.recs[ni]);
 }
-function setExpanded(on){
-  S.expanded=on; el.card.classList.toggle('exp',on); renderHint();
-  if(on) touchInput(); else el.details.scrollTop=0;
+function press(a){
+  touchInput();
+  if(S.view==='look') return lookPress(a);
+  if(S.view==='viewer') return viewerPress(a);
+  if(S.cur&&el.card.classList.contains('peek')&&a!=='back'){wake();hintPop();return;}   // first touch only expands the tile
+  wake(); if(S.cur&&a!=='ok') hintPop();
+  cardPress(a);
 }
-let lastToggle=0;
-function toggleDetails(){
-  const n=performance.now(); if(n-lastToggle<350) return; lastToggle=n; // pinch may arrive as keydown + click
-  if(!S.cur) return; setExpanded(!S.expanded);
+function cardPress(a){
+  switch(a){
+    case 'L': stripGo(-1);break;   case 'R': stripGo(1);break;
+    case 'U': listingGo(-1);break; case 'D': listingGo(1);break;
+    case 'ok': if(S.cur) openViewer(S.mediaIdx);break;
+    case 'back': if(S.locked) unlock(); else bump('y');break;
+  }
 }
-function back(){
-  if(S.expanded){setExpanded(false);return;}
-  if(S.locked){unlock();return;}
-  bump('y');
+function viewerPress(a){
+  const sb=el.sheetBody;
+  switch(a){
+    case 'L': if(S.sheet) setSheet(false); vGo(-1);break;
+    case 'R': if(S.sheet) setSheet(false); vGo(1);break;
+    case 'D': if(!S.sheet) setSheet(true); else sb.scrollBy({top:150,behavior:'smooth'});break;
+    case 'U': if(S.sheet){ if(sb.scrollTop<=2) setSheet(false); else sb.scrollBy({top:-150,behavior:'smooth'}); } else closeViewer(); break;
+    case 'ok': {
+      if(S.sheet){setSheet(false);break;}
+      const m=S.cur.media[S.vIdx];
+      if(m.type==='tour360') enterLook();
+      else if(m.type==='video'){const v=el.vTrack.children[S.vIdx].querySelector('video'); if(v){ if(v.paused){v.play().catch(()=>{});toast('Playing');}else{v.pause();toast('Paused');} }}
+      else{el.viewer.classList.toggle('clean'); renderHints();}
+      break;}
+    case 'back': if(S.sheet) setSheet(false); else closeViewer(); break;
+  }
+}
+function lookPress(a){
+  switch(a){
+    case 'L': lookTurn(-CONFIG.TURN_DEG);break; case 'R': lookTurn(CONFIG.TURN_DEG);break;
+    case 'D': lookTilt();break; case 'U': exitLook();break;
+    case 'ok': lookOk();break; case 'back': exitLook();break;
+  }
 }
 
+let lastOk=0,lastSwipe=0;
+function ok(){const n=performance.now(); if(n-lastOk<350||n-lastSwipe<300) return; lastOk=n; press('ok');}  // pinch may arrive as keydown + click
+
 document.addEventListener('keydown',e=>{
-  switch(e.key){
-    case 'ArrowLeft':  e.preventDefault();media(-1);break;
-    case 'ArrowRight': e.preventDefault();media(1);break;
-    case 'ArrowUp':    e.preventDefault();nav(-1);break;
-    case 'ArrowDown':  e.preventDefault();nav(1);break;
-    case 'Enter': case ' ': e.preventDefault();toggleDetails();break;
-    case 'Escape': case 'Backspace': e.preventDefault();back();break;
-    case 's': case 'S': if(S.simOn){stopSim();}else{startSim();} break; // desktop testing
-  }
+  const map={ArrowLeft:'L',ArrowRight:'R',ArrowUp:'U',ArrowDown:'D',Escape:'back',Backspace:'back'};
+  if(map[e.key]){e.preventDefault();press(map[e.key]);return;}
+  if(e.key==='Enter'||e.key===' '){e.preventDefault();ok();return;}
+  if(e.key==='s'||e.key==='S'){ if(S.simOn) stopSim(); else startSim(); }
 });
-el.card.addEventListener('click',toggleDetails);
+document.addEventListener('click',ok);
+addEventListener('popstate',()=>{
+  if(ignorePop>0){ignorePop--;return;}
+  if(hist>0) hist--;
+  if(S.view==='look') exitLook(true);
+  else if(S.view==='viewer'){ if(S.sheet){setSheet(false);pushView();} else closeViewer(true); }
+});
 
 let wheelT=0;
 addEventListener('wheel',e=>{
   e.preventDefault(); const n=performance.now(); if(n-wheelT<280) return; wheelT=n;
-  if(Math.abs(e.deltaX)>Math.abs(e.deltaY)) media(e.deltaX>0?1:-1); else nav(e.deltaY>0?1:-1);
+  if(Math.abs(e.deltaX)>Math.abs(e.deltaY)) press(e.deltaX>0?'R':'L'); else press(e.deltaY>0?'D':'U');
 },{passive:false});
 
-// pointer swipe fallback for the lower half of the card (no pointer capture)
-(()=>{let x0=0,y0=0,on=false;
-  el.card.addEventListener('pointerdown',e=>{x0=e.clientX;y0=e.clientY;on=true;});
-  el.card.addEventListener('pointerup',e=>{
-    if(!on) return; on=false;
-    const dx=e.clientX-x0,dy=e.clientY-y0;
-    if(Math.abs(dy)>50&&Math.abs(dy)>Math.abs(dx)*1.5) nav(dy<0?1:-1);
-    else if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5) media(dx<0?1:-1);
+// pointer fallback (desktop / phone testing). No pointer capture.
+(()=>{let x0=0,y0=0,on=false,dragged=false;
+  const stage=$('stage');
+  stage.addEventListener('pointerdown',e=>{x0=e.clientX;y0=e.clientY;on=true;dragged=false;});
+  stage.addEventListener('pointermove',e=>{
+    if(!on||S.view!=='look'||!T.ready||!(e.buttons&1)) return;
+    const dx=e.clientX-x0,dy=e.clientY-y0; x0=e.clientX;y0=e.clientY;
+    if(Math.abs(dx)+Math.abs(dy)>0){dragged=true;lastSwipe=performance.now();}
+    T.spin=false; T.ty-=dx*.25; T.yaw-=dx*.25; T.tp=clamp(T.tp+dy*.2,-70,70); T.pitch=T.tp;
   });
-  el.card.addEventListener('pointercancel',()=>{on=false;});
+  stage.addEventListener('pointerup',e=>{
+    if(!on) return; on=false;
+    if(S.view==='look') return;
+    const dx=e.clientX-x0,dy=e.clientY-y0;
+    if(Math.abs(dy)>50&&Math.abs(dy)>Math.abs(dx)*1.5){lastSwipe=performance.now();press(dy<0?'D':'U');}
+    else if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5){lastSwipe=performance.now();press(dx<0?'R':'L');}
+  });
+  stage.addEventListener('pointercancel',()=>{on=false;});
 })();
 
-// keep the glasses focus engine parked on the card
 addEventListener('load',()=>el.card.focus({preventScroll:true}));
-document.addEventListener('visibilitychange',()=>{ if(document.hidden) el.track.querySelectorAll('video').forEach(v=>v.pause()); });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden){
+  document.querySelectorAll('video').forEach(v=>v.pause()); }});
+
+if(Q.get('debug')) window.__rw={S,CONFIG};
 
 /* ---------- go ---------- */
-setGpsChip(); setMode(); renderHint(); startGPS();
+setGpsChip(); setMode(); startGPS();
 })();
 </script>
 </body>
