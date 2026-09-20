@@ -193,6 +193,9 @@ body{display:flex;align-items:center;justify-content:center}
 .row2 em{font-style:normal;font-size:17px;font-weight:700;margin-left:8px}
 .row2 em.pin{color:#001014;background:var(--cyan);padding:0 9px;border-radius:9px}
 .row2 em.dr{color:#7dffb0}.row2 em.up{color:var(--amber)}
+#hubList .row2{padding:8px 18px;margin-bottom:8px}
+#hubList .row2 b{font-size:24px}
+#hubList .row2 span{font-size:16px}
 #radarSvg{position:absolute;inset:0;width:100%;height:100%}
 #radarInfo{position:absolute;left:16px;right:16px;bottom:62px;height:76px;border-radius:20px;background:var(--panel);border:1px solid var(--cyan-soft);padding:8px 16px;overflow:hidden}
 #radarInfo .p{font-size:26px;font-weight:700;color:var(--cyan);white-space:nowrap}
@@ -205,6 +208,12 @@ body{display:flex;align-items:center;justify-content:center}
 .cmp .h{font-weight:700;font-size:17px;color:var(--cyan);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cmp .k{color:var(--dim);font-size:17px}
 .cmp .best{color:#7dffb0;font-weight:700}
+
+
+#arrive{position:absolute;top:54px;left:50%;transform:translate(-50%,-14px);max-width:568px;padding:9px 22px;border-radius:24px;background:var(--cyan);color:#001014;
+  font-size:21px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 0 26px rgba(0,229,255,.55);opacity:0;pointer-events:none;
+  transition:opacity .25s,transform .25s var(--ease);z-index:45}
+#arrive.on{opacity:1;transform:translate(-50%,0)}
 
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -260,6 +269,7 @@ body{display:flex;align-items:center;justify-content:center}
   <section id="saved" class="layer"><div class="layerTitle" id="savedTitle"></div><div id="savedList"></div><div class="hintbar layerHint" id="savedHint"></div></section>
   <section id="compare" class="layer"><div class="layerTitle">Compare</div><div id="cmpBody"></div><div class="hintbar layerHint" id="cmpHint"></div></section>
 
+  <div id="arrive"></div>
   <div id="toast"></div>
 </div>
 
@@ -318,6 +328,7 @@ const CONFIG={
   SIM_SPEED_MPS:5,
   SIM_START:{lat:+(Q.get('lat')||40.7411),lng:+(Q.get('lng')||-73.9897)},
   FORCE_SIM:Q.get('sim')==='1',
+  ARRIVE_M:+(Q.get('arrive')||25),      // "You're here" banner distance in meters
   STOCK_PHOTOS:Q.get('stock')!=='0',    // stand-in stock photos for listings that have none (?stock=0 turns them off)
   DEMO_TOUR_VIDEO:Q.get('tourvideo')||'',   // optional: add an equirect video tour to every demo listing
   TURN_DEG:30
@@ -368,7 +379,8 @@ const S={
   fetchCenter:null,fetching:false,offline:false,
   simOn:false,simT:0,simHeading:15,gotFix:false,locErr:null,peekT:0,
   radius:CONFIG.RADIUS_M,
-  stack:[],actIdx:0,hubIdx:0,savIdx:0,pins:[],rRange:null,rSel:null,rOrder:[],rmArm:null
+  stack:[],actIdx:0,hubIdx:0,savIdx:0,pins:[],rRange:null,rSel:null,rOrder:[],rmArm:null,
+  filters:null,filtersOn:true,arriveOn:true,arrived:new Set()
 };
 
 /* =====================================================================
@@ -654,8 +666,8 @@ function recFor(l){return {l,d:dist(S.pos.lat,S.pos.lng,l.lat,l.lng),b:bearing(S
 function tick(){
   if(!S.pos) return;
   const recs=[];
-  for(const l of S.listings.values()){const r=recFor(l);if(r.d<=S.radius) recs.push(r);}
-  recs.sort((a,b)=>a.d-b.d); S.recs=recs;
+  for(const l of S.listings.values()){const r=recFor(l);if(r.d<=S.radius&&passes(l)) recs.push(r);}
+  recs.sort((a,b)=>a.d-b.d); S.recs=recs; checkArrival(recs);
   const curRec=S.cur?recFor(S.cur):null;
   if(!S.locked&&S.view==='card'){
     const best=recs[0];
@@ -670,15 +682,17 @@ function setEmpty(){
   el.empty.classList.remove('gone');
   el.emptyTxt.innerHTML=!S.pos?(S.locErr==='denied'?'Location is off.<br><b>Swipe or pinch once to allow it</b>':S.locErr?'No GPS signal yet.<br><b>Check location on your phone</b>':'Finding your location…')+(S.locErr&&S.locMsg?`<br><span style="font-size:16px;color:#5f8590">${esc(S.locMsg)}</span>`:'')
     :S.offline?'Can’t reach listings.<br><b>Retrying as you walk</b>'
+    :filtersActive()?`No rentals match your filters within <b>${fmtDist(S.radius)}</b>.<br>Swipe up for the menu to turn them off`
     :`No rentals within <b>${fmtDist(S.radius)}</b>.<br>Keep walking`;
 }
 function updateLive(){
   const n=S.recs.length;
   const pre=S.locked?'Browsing ':'';
-  if(!S.cur){el.countTxt.textContent=n+' nearby';return;}
+  const fl=filtersActive()?' filtered':'';
+  if(!S.cur){el.countTxt.textContent=n+' nearby'+fl;return;}
   if(!S.pos) return;
   const r=recFor(S.cur), i=S.recs.findIndex(x=>x.l.id===S.cur.id);
-  el.countTxt.textContent=pre+(i>=0?`${i+1} of ${n}`:`${n} nearby`);
+  el.countTxt.textContent=pre+(i>=0?`${i+1} of ${n}`:`${n} nearby`)+fl;
   const d=$('dTxt'),w=$('dDir'),a=$('arrow');
   if(d){d.textContent=fmtDist(r.d);w.textContent=direction(r.b);
     a.style.transform=`rotate(${S.heading==null?r.b:((r.b-S.heading+360)%360)}deg)`;}
@@ -711,7 +725,9 @@ function showListing(rec){
 const apiBase=()=>CONFIG.API_URL?CONFIG.API_URL.replace(/\/listings\/?$/,''):'';
 function applyStreet(l){
   const add=[];
-  if(l.street&&l.street.url&&!l.media.some(m=>m.real&&!m.pano))
+  if(l.gsv&&l.gsv.url&&!l.media.some(m=>m.gsv))
+    add.push({type:'photo',src:l.gsv.url,thumb:l.gsv.url,label:'Street View'+(l.gsv.date?', '+String(l.gsv.date).slice(0,4):''),credit:'Photo: Google Street View',real:true,gsv:true});
+  if(l.street&&l.street.url&&!add.some(m=>m.gsv)&&!l.media.some(m=>m.real&&!m.pano))
     add.push({type:'photo',src:l.street.url,thumb:l.street.url,label:'Street photo'+(l.street.capturedAt?', '+new Date(l.street.capturedAt).getUTCFullYear():''),credit:'Photo: '+l.street.credit,real:true});
   if(l.pano&&l.pano.url&&!l.media.some(m=>m.pano))
     add.push({type:'tour360',kind:'image',src:l.pano.url,thumb:l.pano.thumb||l.pano.url,label:'Street 360°',credit:'Photo: '+l.pano.credit,real:true,pano:true});
@@ -721,9 +737,9 @@ async function fetchStreet(l){
   if(!CONFIG.API_URL||l._sp||String(l.id).startsWith('demo-')) return;
   l._sp=true;
   const q=`lat=${l.lat.toFixed(6)}&lng=${l.lng.toFixed(6)}`, get=p=>fetch(`${apiBase()}/${p}?${q}`).then(r=>r.ok?r.json():null).catch(()=>null);
-  const [ph,pa]=await Promise.all([get('streetphoto'),get('streetpano')]);
-  if(ph&&ph.url) l.street=ph; if(pa&&pa.url) l.pano=pa;
-  if((l.street||l.pano)&&S.cur&&S.cur.id===l.id&&S.view==='card'){applyStreet(l);buildStrip(l);}
+  const [ph,pa,gv]=await Promise.all([get('streetphoto'),get('streetpano'),get('streetview')]);
+  if(ph&&ph.url) l.street=ph; if(pa&&pa.url) l.pano=pa; if(gv&&gv.url) l.gsv=gv;
+  if((l.street||l.pano||l.gsv)&&S.cur&&S.cur.id===l.id&&S.view==='card'){applyStreet(l);buildStrip(l);}
 }
 function mkVideo(m,strip){
   const v=document.createElement('video');
@@ -844,7 +860,7 @@ const gridHTML=rows=>rows.length?`<div class="grid">${rows.map(r=>`<div${r[2]?' 
 function detailsHTML(l){
   const sample=String(l.id).startsWith('demo-')?'<p style="color:var(--amber);margin-top:12px">Sample listing for the demo. Not a real apartment; photos are stock images.</p>':'';
   const stock=(!sample&&(l.media||[]).some(m=>m.stock)?'<p style="color:var(--amber);margin-top:12px">Photos marked Sample are stock images, not this apartment.</p>':'')
-    +((l.street&&l.street.url)||(l.pano&&l.pano.url)?'<p style="margin-top:12px">Street photos by Mapillary contributors (CC BY-SA 4.0). They may be out of date.</p>':'');
+    +((l.gsv&&l.gsv.url)||(l.street&&l.street.url)||(l.pano&&l.pano.url)?`<p style="margin-top:12px">${l.gsv&&l.gsv.url?'Street View photo from Google. ':''}${(l.street&&l.street.url&&!(l.gsv&&l.gsv.url))||(l.pano&&l.pano.url)?'Street photos by Mapillary contributors (CC BY-SA 4.0). ':''}They may be out of date.</p>`:'');
   const dr=priceDrop(l);
   const chips=[dr?dropText(dr):'',l.days!=null&&l.days<=7?'New':'',l.type||'',l.days!=null?(l.days===0?'Listed today':l.days+' day'+(l.days===1?'':'s')+' listed'):''].filter(Boolean);
   const basics=[['Available',l.available],['Lease',l.lease],['Deposit',l.deposit],['Pets',l.pets],['Laundry',l.laundry],['Floor',l.floor],['Parking',l.parking]].filter(r=>r[1]);
@@ -857,6 +873,7 @@ function detailsHTML(l){
     ${l.title?`<h3>${esc(l.title)}</h3>`:''}
     ${l.description?`<p>${esc(l.description)}</p>`:''}
     ${extra.length?`<h3>Rent and location</h3>${gridHTML(extra)}`:''}
+    <div id="nearbySec">${nearbyHTML(l)}</div>
     ${basics.length||facts.length?`<h3>Details</h3>${gridHTML([...basics,...facts])}`:''}
     ${l.amenities&&l.amenities.length?`<h3>Amenities</h3><div class="tags">${l.amenities.map(a=>`<i>${esc(a)}</i>`).join('')}</div>`:''}
     ${hist.length?`<h3>Rent history</h3>${gridHTML(hist)}`:''}
@@ -903,7 +920,7 @@ function vGo(d){
 }
 function setSheet(on){
   S.sheet=on; el.sheet.classList.toggle('open',on); el.viewer.classList.toggle('sheetopen',on);
-  if(on) el.sheetBody.scrollTop=0;
+  if(on){ el.sheetBody.scrollTop=0; if(S.cur) fetchNearby(S.cur); }
 }
 function closeViewer(fromPop){
   if(S.view==='look') exitLook(!!fromPop);
@@ -1281,14 +1298,20 @@ function refreshLayers(){ if(S.view==='radar') renderRadar(); else if(S.view==='
 function layerPress(a){ ({hub:hubPress,radar:radarPress,saved:savedPress,compare:comparePress})[S.view](a); }
 
 /* menu */
-const hubRows=()=>[
-  {t:'Radar',s:'See every listing around you'},
-  {t:`Saved (${savedList().length})`,s:'Your favorites, and compare two'},
-  {t:pairCode()?'Phone paired':'Pair your phone',s:CONFIG.API_URL?(pairCode()?'Listings you send show up at '+apiHost()+'/phone':'On your phone, open '+apiHost()+'/phone'):'Needs your real listings feed'},
-  {t:'Close menu',s:'Back to the listing'}
-];
+const hubRows=()=>{
+  const fs=filtersSummary(S.filters);
+  return [
+    {t:'Radar',s:'See every listing around you'},
+    {t:`Saved (${savedList().length})`,s:'Your favorites, and compare two'},
+    {t:'Filters: '+(fs?(S.filtersOn?'on':'off'):'none set'),s:fs?fs+'. Pinch to turn '+(S.filtersOn?'off':'on'):(CONFIG.API_URL?'Set them on your phone at '+apiHost()+'/phone':'Needs your real listings feed')},
+    {t:'Arrival alerts: '+(S.arriveOn?'on':'off'),s:'A banner when you reach a listing. Pinch to switch'},
+    {t:pairCode()?'Phone paired':'Pair your phone',s:CONFIG.API_URL?(pairCode()?'Listings you send show up at '+apiHost()+'/phone':'On your phone, open '+apiHost()+'/phone'):'Needs your real listings feed'},
+    {t:'Close menu',s:'Back to the listing'}
+  ];
+};
 function renderHub(){
   el.hubList.innerHTML=hubRows().map((r,i)=>`<div class="row2${i===S.hubIdx?' on':''}"><b>${esc(r.t)}</b><span>${esc(r.s)}</span></div>`).join('');
+  const rowEl=el.hubList.children[S.hubIdx]; if(rowEl&&rowEl.scrollIntoView) rowEl.scrollIntoView({block:'nearest'});
   el.hubHint.innerHTML=H('▲ ▼','Move')+H('Pinch','Choose')+H('◀','Close');
 }
 function hubPress(a){
@@ -1299,8 +1322,13 @@ function hubPress(a){
   else if(a==='ok'){
     if(S.hubIdx===0) return openLayer('radar');
     if(S.hubIdx===1) return openLayer('saved');
-    if(S.hubIdx===2){toast(pairCode()?'Already paired':'Open that address on your phone');return;}
-    return closeLayer(false);
+    if(S.hubIdx===2){
+      if(!hasFilters(S.filters)) toast(CONFIG.API_URL?'Set filters on your phone first':'Needs your real listings feed');
+      else{S.filtersOn=!S.filtersOn;LS.set('rw_filters_on',S.filtersOn);toast('Filters '+(S.filtersOn?'on':'off'));tick();}
+    }
+    else if(S.hubIdx===3){S.arriveOn=!S.arriveOn;LS.set('rw_arrive',S.arriveOn);toast('Arrival alerts '+(S.arriveOn?'on':'off'));}
+    else if(S.hubIdx===4) toast(pairCode()?'Already paired':'Open that address on your phone');
+    else return closeLayer(false);
   }
   renderHub();
 }
@@ -1317,7 +1345,7 @@ function renderRadar(){
   if(S.rRange==null){S.rRange=RANGES.findIndex(r=>r>=S.radius); if(S.rRange<0) S.rRange=RANGES.length-1;}
   const range=RANGES[S.rRange], cx=300, cy=262, R=196, head=S.heading;
   const items=[];
-  if(S.pos) for(const l of S.listings.values()){const r=recFor(l); if(r.d<=range) items.push(r);}
+  if(S.pos) for(const l of S.listings.values()){const r=recFor(l); if(r.d<=range&&passes(l)) items.push(r);}
   items.sort((a,b)=>a.d-b.d); items.length=Math.min(items.length,80);
   const med=medianByBeds(), saved=new Set(savedList().map(x=>x.id));
   const pts=items.map(r=>{const rel=(((r.b-(head||0))%360)+360)%360, k=R*(r.d/range);
@@ -1419,10 +1447,79 @@ function renderCompare(){
 }
 function comparePress(a){ closeLayer(false); }
 
+/* ----- filters (set on the phone, read here) ----- */
+const TYPE_RE={apartment:/apartment|multi/i,condo:/condo/i,house:/single|house|manufactured/i,townhouse:/town/i};
+const hasFilters=f=>!!f&&Object.keys(f).some(k=>f[k]!==undefined&&f[k]!==null&&!(Array.isArray(f[k])&&!f[k].length));
+const filtersActive=()=>S.filtersOn&&hasFilters(S.filters);
+function passes(l){
+  if(!filtersActive()) return true;
+  const f=S.filters;
+  if(f.maxRent&&l.price>f.maxRent) return false;
+  if(f.minBeds&&!(l.beds>=f.minBeds)) return false;
+  if(f.minBaths&&!(l.baths>=f.minBaths)) return false;
+  if(f.minSqft&&!(l.sqft>=f.minSqft)) return false;
+  if(f.types&&f.types.length&&!f.types.some(t=>TYPE_RE[t]&&TYPE_RE[t].test(l.type||''))) return false;
+  if(f.dropsOnly&&!priceDrop(l)) return false;
+  if(f.newOnly&&!(l.days!=null&&l.days<=7)) return false;
+  return true;
+}
+function filtersSummary(f){
+  if(!hasFilters(f)) return '';
+  const p=[]; if(f.maxRent) p.push('max '+money(f.maxRent)); if(f.minBeds) p.push(f.minBeds+'+ bd'); if(f.minBaths) p.push(f.minBaths+'+ ba');
+  if(f.minSqft) p.push(f.minSqft+'+ ft²'); if(f.types&&f.types.length) p.push(f.types.join('/')); if(f.dropsOnly) p.push('price drops'); if(f.newOnly) p.push('new only');
+  return p.join(', ');
+}
+function readFilters(){ S.filters=LS.get('rw_filters',null); S.filtersOn=LS.get('rw_filters_on',true)!==false; S.arriveOn=LS.get('rw_arrive',true)!==false; }
+async function loadFilters(){
+  const code=pairCode(); if(!code||!CONFIG.API_URL) return;
+  try{
+    const r=await fetch(`${apiBase()}/sync/filters?code=${code}`,{cache:'no-store'});
+    if(!r.ok) return;
+    const j=await r.json(), before=JSON.stringify(S.filters||{});
+    S.filters=j.filters||{}; LS.set('rw_filters',S.filters);
+    if(S.pos&&JSON.stringify(S.filters)!==before) tick();
+  }catch(e){}
+}
+
+/* ----- arrival alert: a banner when you reach a listing ----- */
+let arriveT=0;
+function checkArrival(recs){
+  if(!S.arriveOn||!S.pos||S.src==='fixed'||(S.acc!=null&&S.acc>40)) return;
+  const near=new Set(recs.filter(r=>r.d<=70).map(r=>r.l.id));
+  for(const id of [...S.arrived]) if(!near.has(id)) S.arrived.delete(id);      // walked away: alert again next time
+  const hit=recs.find(r=>r.d<=CONFIG.ARRIVE_M&&!S.arrived.has(r.l.id));
+  if(!hit) return;
+  S.arrived.add(hit.l.id);
+  const e=$('arrive'), l=hit.l;
+  e.textContent=`You're here: ${(l.address||'this listing').split(',')[0]}, ${money(l.price)}`;
+  e.classList.add('on'); clearTimeout(arriveT); arriveT=setTimeout(()=>e.classList.remove('on'),6500);
+  try{if(navigator.vibrate) navigator.vibrate(150);}catch(x){}
+  if(S.view==='card'&&!S.locked) wake();
+}
+
+/* ----- nearby places (OpenStreetMap, via the Worker): opened with the details sheet ----- */
+function nearbyHTML(l){
+  if(!CONFIG.API_URL||String(l.id).startsWith('demo-')) return '';
+  const n=l.nearby;
+  if(n===undefined) return '<h3>Nearby</h3><p>Looking up…</p>';
+  if(n===null) return '<h3>Nearby</h3><p>Couldn’t load nearby places just now.</p>';
+  const row=(k,v)=>[k,v?`${v.name||v.kind}, ${v.minutes} min walk (${fmtDist(v.distanceM)})`:'None within about 0.75 mi',true];
+  return `<h3>Nearby</h3>${gridHTML([row('Train or subway',n.train),row('Bus stop',n.bus),row('Grocery',n.grocery),row('Park',n.park)])}<p style="font-size:14px;color:var(--dim);margin-top:6px">Walking times are estimates. Map data © OpenStreetMap contributors.</p>`;
+}
+async function fetchNearby(l){
+  if(!CONFIG.API_URL||l._nb||String(l.id).startsWith('demo-')) return;
+  l._nb=true;
+  try{
+    const r=await fetch(`${apiBase()}/nearby?lat=${l.lat.toFixed(6)}&lng=${l.lng.toFixed(6)}`);
+    l.nearby=r.ok?await r.json():null;
+  }catch(e){l.nearby=null;}
+  const sec=$('nearbySec'); if(sec&&S.cur&&S.cur.id===l.id) sec.innerHTML=nearbyHTML(l);
+}
+
 if(Q.get('debug')) window.__rw={S,CONFIG};
 
 /* ---------- go ---------- */
-initPair(); setGpsChip(); setMode(); startGPS();
+initPair(); readFilters(); loadFilters(); setInterval(loadFilters,300000); setGpsChip(); setMode(); startGPS();
 })();
 </script>
 </body>
