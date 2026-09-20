@@ -422,6 +422,20 @@ const DESC=[
 ];
 const BASE_PRICE=[2300,3100,4200,5600], BASE_SQFT=[420,640,880,1150];
 
+// Sample photos: real, free-to-use stock photos from Pexels (pexels.com/license). Sample data only.
+// If one fails to load, the drawn illustration in "fb" is shown instead.
+const PX=id=>w=>`https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&w=${w}`;
+const STOCK={
+  exterior:[19390169,17672408,21792127,4890695,14846410,18348585],
+  living:[6588599,6933852,28991200,6527029,6934189,19836798],
+  bedroom:[279701,15667603,1034584,6636262],
+  kitchen:[6969870,10099318,4992465,5998041,28843334]
+};
+const CITIES=['Riverton','Lakewood','Fairview','Maplewood','Brookfield'];
+const stockPhoto=(kind,r,label,fbSeed,hue)=>{
+  const id=STOCK[kind][Math.floor(r()*STOCK[kind].length)];
+  return {type:'photo',src:PX(id)(1200),thumb:PX(id)(640),label,fb:lazyScene(kind,hue,fbSeed)};
+};
 function demoListings(lat,lng){
   const cell=Math.round(lat*300)+'|'+Math.round(lng*300);
   const rnd=mulberry32(hashStr(cell)), out=[];
@@ -432,16 +446,17 @@ function demoListings(lat,lng){
     const price=Math.round(BASE_PRICE[beds]*(0.78+rnd()*0.5)/25)*25;
     const hue=Math.floor(rnd()*360), seed=Math.floor(rnd()*1e9);
     const amen=[...AMEN].sort(()=>rnd()-.5).slice(0,3+Math.floor(rnd()*3));
-    const media=[{type:'photo',src:lazyScene('exterior',hue,seed),label:'Exterior'},
-                 {type:'photo',src:lazyScene('living',hue,seed+1),label:'Living room'}];
-    if(rnd()>.35) media.push({type:'video',src:DEMO_CLIPS[Math.floor(rnd()*2)],poster:lazyScene('living',hue,seed+9),label:'Video tour'});
-    if(beds>0) media.push({type:'photo',src:lazyScene('bedroom',hue,seed+2),label:'Bedroom'});
-    media.push({type:'photo',src:lazyScene('kitchen',hue,seed+3),label:'Kitchen'});
+    const r2=mulberry32(seed^0x9e3779b1), city=CITIES[Math.floor(r2()*CITIES.length)], zip=10000+Math.floor(r2()*89999);
+    const media=[stockPhoto('exterior',r2,'Exterior',seed,hue),
+                 stockPhoto('living',r2,'Living room',seed+1,hue)];
+    if(rnd()>.35) media.push({type:'video',src:DEMO_CLIPS[Math.floor(rnd()*2)],poster:lazyScene('living',hue,seed+9),label:'Sample video'});
+    if(beds>0) media.push(stockPhoto('bedroom',r2,'Bedroom',seed+2,hue));
+    media.push(stockPhoto('kitchen',r2,'Kitchen',seed+3,hue));
     if(rnd()>.4) media.push({type:'tour360',kind:'image',src:'proc:'+seed,label:'3D tour'});
     if(CONFIG.DEMO_TOUR_VIDEO) media.push({type:'tour360',kind:'video',src:CONFIG.DEMO_TOUR_VIDEO,label:'3D video tour'});
     out.push({
       id:'demo-'+cell+'-'+i, title:`${ADJ[Math.floor(rnd()*ADJ.length)]} ${beds?beds+' bedroom':'studio'}`,
-      address:`${num} ${street}`, lat:p.lat, lng:p.lng, price, beds,
+      address:`${num} ${street}, ${city}, NY ${zip}`, lat:p.lat, lng:p.lng, price, beds,
       baths:beds<=1?1:(rnd()>.5?2:1), sqft:Math.round(BASE_SQFT[beds]*(0.85+rnd()*0.3)/5)*5, type:'Apartment',
       available:['Now','Oct 1','Nov 1','Dec 1'][Math.floor(rnd()*4)], lease:'12 mo', deposit:'1 month',
       pets:['Cats OK','Dogs and cats OK','No pets'][Math.floor(rnd()*3)],
@@ -625,7 +640,7 @@ function buildStrip(l){
     const s=mk('div','slide'); s.dataset.i=i;
     if(m.type==='video'){const v=mkVideo(m,true); v.onerror=()=>s.classList.add('bad'); s.appendChild(v);}
     else if(m.type==='tour360'){s.appendChild(tourPreview(m,false));}
-    else{const im=new Image(); im.decoding='async'; im.alt=m.label||''; if(i>1) im.loading='lazy'; im.src=U(m.thumb||m.src); s.appendChild(im);}
+    else{const im=new Image(); im.decoding='async'; im.alt=m.label||''; if(i>1) im.loading='lazy'; im.onerror=()=>{ if(m.fb&&!im.dataset.fb){im.dataset.fb='1';im.src=U(m.fb);} }; im.src=U(m.thumb||m.src); s.appendChild(im);}
     if(m.label){const c=mk('div','cap');c.textContent=m.label;s.appendChild(c);}
     el.track.appendChild(s);
   });
@@ -706,7 +721,7 @@ function openViewer(i){
   el.vTrack.scrollLeft=i*el.vTrack.clientWidth; setV(i);
 }
 function detailsHTML(l){
-  const sample=String(l.id).startsWith('demo-')?'<p style="color:var(--amber);margin-top:12px">Sample listing for the demo. This is not a real apartment.</p>':'';
+  const sample=String(l.id).startsWith('demo-')?'<p style="color:var(--amber);margin-top:12px">Sample listing for the demo. Not a real apartment; photos are stock images.</p>':'';
   const rows=[['Available',l.available],['Lease',l.lease],['Deposit',l.deposit],['Pets',l.pets],['Laundry',l.laundry],['Floor',l.floor],['Parking',l.parking]]
     .filter(r=>r[1]).map(r=>`<div><span>${r[0]}</span>${esc(r[1])}</div>`).join('');
   return `${sample}${l.title?`<h3>${esc(l.title)}</h3>`:''}
@@ -731,7 +746,7 @@ function fillSlide(i){
   else{
     const ld=mk('div','load'); ld.textContent='Loading…'; s.appendChild(ld);
     const im=new Image(); im.decoding='async'; im.alt=m.label||'';
-    im.onload=()=>ld.remove(); im.onerror=()=>{ld.textContent='Photo unavailable';};
+    im.onload=()=>ld.remove(); im.onerror=()=>{ if(m.fb&&!im.dataset.fb){im.dataset.fb='1';im.src=U(m.fb);} else ld.textContent='Photo unavailable'; };
     im.src=U(m.src); s.appendChild(im);
   }
 }
