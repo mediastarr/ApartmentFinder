@@ -649,10 +649,27 @@ function showListing(rec){
     </div>
     <div class="specs">${specsHTML(l,false)}</div>
     <div class="addr">${esc(l.address||l.title||'')}</div>`;
-  buildStrip(l);
+  applyStreet(l); buildStrip(l);
   el.card.classList.remove('hide','in'); void el.card.offsetWidth; el.card.classList.add('in');
-  renderHints(); updateLive(); wake();
+  renderHints(); updateLive(); wake(); fetchStreet(l);
   if(!S.hinted){S.hinted=true;hintPop(4000);}
+}
+// Real street-level photo of the building (Mapillary, via the Worker), shown first when one exists
+const apiBase=()=>CONFIG.API_URL?CONFIG.API_URL.replace(/\/listings\/?$/,''):'';
+function applyStreet(l){
+  const j=l.street; if(!j||!j.url||(l.media[0]&&l.media[0].real)) return;
+  l.media=[{type:'photo',src:j.url,thumb:j.url,label:'Street photo'+(j.capturedAt?', '+new Date(j.capturedAt).getUTCFullYear():''),credit:'Photo: '+j.credit,real:true},...l.media];
+}
+async function fetchStreet(l){
+  if(!CONFIG.API_URL||l.street!==undefined||String(l.id).startsWith('demo-')) return;
+  l.street=null;
+  try{
+    const r=await fetch(`${apiBase()}/streetphoto?lat=${l.lat.toFixed(6)}&lng=${l.lng.toFixed(6)}`);
+    if(!r.ok) return;
+    const j=await r.json(); if(!j.url) return;
+    l.street=j;
+    if(S.cur&&S.cur.id===l.id&&S.view==='card'){applyStreet(l);buildStrip(l);}
+  }catch(e){}
 }
 function mkVideo(m,strip){
   const v=document.createElement('video');
@@ -771,7 +788,8 @@ function rentInsights(l){
 const gridHTML=rows=>rows.length?`<div class="grid">${rows.map(r=>`<div${r[2]?' class="wide"':''}><span>${esc(r[0])}</span>${esc(r[1])}</div>`).join('')}</div>`:'';
 function detailsHTML(l){
   const sample=String(l.id).startsWith('demo-')?'<p style="color:var(--amber);margin-top:12px">Sample listing for the demo. Not a real apartment; photos are stock images.</p>':'';
-  const stock=!sample&&(l.media||[]).some(m=>m.stock)?'<p style="color:var(--amber);margin-top:12px">These photos are stock images, not this apartment.</p>':'';
+  const stock=(!sample&&(l.media||[]).some(m=>m.stock)?'<p style="color:var(--amber);margin-top:12px">Photos marked Sample are stock images, not this apartment.</p>':'')
+    +(l.street&&l.street.url?`<p style="margin-top:12px">Street photo by Mapillary contributors (CC BY-SA 4.0), taken about ${l.street.distanceM} m away${l.street.capturedAt?' in '+new Date(l.street.capturedAt).getUTCFullYear():''}. It may be out of date.</p>`:'');
   const chips=[l.days!=null&&l.days<=7?'New':'',l.type||'',l.days!=null?(l.days===0?'Listed today':l.days+' day'+(l.days===1?'':'s')+' listed'):''].filter(Boolean);
   const basics=[['Available',l.available],['Lease',l.lease],['Deposit',l.deposit],['Pets',l.pets],['Laundry',l.laundry],['Floor',l.floor],['Parking',l.parking]].filter(r=>r[1]);
   const facts=(l.facts||[]).filter(f=>!/^days on market$/i.test(f[0]));
@@ -806,6 +824,7 @@ function fillSlide(i){
     const im=new Image(); im.decoding='async'; im.alt=m.label||'';
     im.onload=()=>ld.remove(); im.onerror=()=>{ if(m.fb&&!im.dataset.fb){im.dataset.fb='1';im.src=U(m.fb);} else ld.textContent='Photo unavailable'; };
     im.src=U(m.src); s.appendChild(im);
+    if(m.credit){const c=mk('div','cap');c.textContent=m.credit;c.style.cssText='left:50%;transform:translateX(-50%);bottom:auto;top:58px;white-space:nowrap;font-size:15px';s.appendChild(c);}
     if(m.stock){const c=mk('div','cap');c.textContent='Stock photo, not this apartment';c.style.cssText='left:50%;transform:translateX(-50%);bottom:auto;top:58px;white-space:nowrap';s.appendChild(c);}
   }
 }
