@@ -531,6 +531,8 @@ function onFix(lat,lng,hdg,acc,src){
   tick();
 }
 function startGPS(){
+  const fix=(Q.get('fix')||'').split(',').map(Number);   // ?fix=42.425,-71.066 pins the location (for testing)
+  if(fix.length===2&&fix.every(isFinite)&&Q.get('fix')){onFix(fix[0],fix[1],null,5,'fixed');return;}
   const demo=!CONFIG.API_URL;   // demo data can fall back to a simulated walk; real listings never do
   if(CONFIG.FORCE_SIM||!('geolocation' in navigator)){
     if(CONFIG.FORCE_SIM||demo) startSim(); else {S.locErr='unavailable';setGpsChip();setEmpty();}
@@ -558,7 +560,9 @@ function setGpsChip(){
   if(!S.pos){t=S.locErr==='denied'?'Location off':S.locErr?'No GPS signal':'Locating';warn=true;pulse=!S.locErr;}
   else if(S.offline){t='Listings offline';warn=true;}
   else if(S.src==='sim'){t='Demo walk';warn=true;}
+  else if(S.src==='fixed'){t='Fixed location';warn=true;}
   else if(!CONFIG.API_URL){t='Sample data';warn=true;}
+  else if(S.acc>1000){t='Rough location ±'+(S.acc/1000).toFixed(1)+' km';warn=true;}
   else t='GPS'+(S.acc?' ±'+Math.round(S.acc)+' m':'');
   el.gpsTxt.textContent=t;
   el.gps.classList.toggle('warn',warn);el.gps.classList.toggle('pulse',pulse);
