@@ -143,6 +143,7 @@ body{display:flex;align-items:center;justify-content:center}
 #sheetBody{flex:1;min-height:0;overflow-y:auto;padding:0 22px 14px;scrollbar-width:none;touch-action:pan-y}
 #sheetBody::-webkit-scrollbar{display:none}
 #sheetHint{flex:none;height:38px;border-top:1px solid rgba(0,229,255,.16)}
+#sheetBody .grid div.wide{grid-column:1/-1}
 #sheetBody h3{font-size:22px;font-weight:700;margin:14px 0 8px}
 #sheetBody p{font-size:19px;line-height:1.4;color:#cfe7ee}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin-top:2px}
@@ -268,6 +269,7 @@ const CONFIG={
   SIM_SPEED_MPS:5,
   SIM_START:{lat:+(Q.get('lat')||40.7411),lng:+(Q.get('lng')||-73.9897)},
   FORCE_SIM:Q.get('sim')==='1',
+  STOCK_PHOTOS:Q.get('stock')!=='0',    // stand-in stock photos for listings that have none (?stock=0 turns them off)
   DEMO_TOUR_VIDEO:Q.get('tourvideo')||'',   // optional: add an equirect video tour to every demo listing
   TURN_DEG:30
 };
@@ -430,6 +432,7 @@ const BASE_PRICE=[2300,3100,4200,5600], BASE_SQFT=[420,640,880,1150];
 const PX=id=>w=>`https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&w=${w}`;
 const STOCK={
   exterior:[19390169,17672408,21792127,4890695,14846410,18348585],
+  house:[8031873,5353883,4469146],
   living:[6588599,6933852,28991200,6527029,6934189,19836798],
   bedroom:[279701,15667603,1034584,6636262],
   kitchen:[6969870,10099318,4992465,5998041,28843334]
@@ -437,7 +440,7 @@ const STOCK={
 const CITIES=['Riverton','Lakewood','Fairview','Maplewood','Brookfield'];
 const stockPhoto=(kind,r,label,fbSeed,hue)=>{
   const id=STOCK[kind][Math.floor(r()*STOCK[kind].length)];
-  return {type:'photo',src:PX(id)(1200),thumb:PX(id)(640),label,fb:lazyScene(kind,hue,fbSeed)};
+  return {type:'photo',src:PX(id)(1200),thumb:PX(id)(640),label,fb:lazyScene(kind==='house'?'exterior':kind,hue,fbSeed)};
 };
 function demoListings(lat,lng){
   const cell=Math.round(lat*300)+'|'+Math.round(lng*300);
@@ -484,8 +487,18 @@ const normMedia=m=>{
 const normListing=l=>{
   if(!(l&&l.id!=null&&isFinite(l.lat)&&isFinite(l.lng)&&isFinite(l.price))) return null;
   const media=(Array.isArray(l.media)?l.media:[]).map(normMedia).filter(Boolean);
-  return {...l,id:String(l.id),media:media.length?media:[{type:'photo',src:scene('none',0,0),label:'No photos yet'}]};
+  return {...l,id:String(l.id),media:media.length?media:stockMedia(l)};
 };
+// Real listings that come with no photos get clearly marked stand-in stock photos (never presented as this apartment)
+function stockMedia(l){
+  if(!CONFIG.STOCK_PHOTOS) return [{type:'photo',src:scene('none',0,0),label:'No photos yet'}];
+  const key=String(l.id), r=mulberry32(hashStr(key)), seed=hashStr(key+'fb'), hue=seed%360;
+  const house=/single|house|townhouse|manufactured/i.test(l.type||'');
+  const out=[stockPhoto(house?'house':'exterior',r,'Exterior',seed,hue),stockPhoto('living',r,'Living room',seed+1,hue)];
+  if(l.beds>0) out.push(stockPhoto('bedroom',r,'Bedroom',seed+2,hue));
+  out.push(stockPhoto('kitchen',r,'Kitchen',seed+3,hue));
+  return out.map(m=>({...m,label:'Sample: '+m.label,stock:true}));
+}
 // Pulls every page (nearest first) and hands each page to onPage as it arrives
 async function fromApi(lat,lng,onPage){
   let cursor=0,total=0;
@@ -741,15 +754,39 @@ function openViewer(i){
   el.viewer.classList.add('open');
   el.vTrack.scrollLeft=i*el.vTrack.clientWidth; setV(i);
 }
+// A few useful numbers worked out from what we already have
+function rentInsights(l){
+  const rows=[];
+  if(l.sqft&&l.price) rows.push(['Rent per sq ft','$'+(l.price/l.sqft).toFixed(2)]);
+  if(S.pos){const d=recFor(l).d; rows.push(['Distance from you',`${fmtDist(d)}, about ${Math.max(1,Math.round(d/80))} min walk`]);}
+  if(l.beds!=null){
+    const same=[...S.listings.values()].filter(x=>x.id!==l.id&&x.beds===l.beds&&x.price>0&&dist(l.lat,l.lng,x.lat,x.lng)<=3200).map(x=>x.price).sort((p,q)=>p-q);
+    if(same.length>=5){
+      const med=same[Math.floor(same.length/2)], pct=Math.round((l.price/med-1)*100);
+      rows.push(['Compared with nearby',`${pct===0?'About the same as':Math.abs(pct)+'% '+(pct<0?'below':'above')} the typical ${money(med)} for ${l.beds===0?'a studio':l.beds+' bedroom'} (${same.length} nearby)`,true]);
+    }
+  }
+  return rows;
+}
+const gridHTML=rows=>rows.length?`<div class="grid">${rows.map(r=>`<div${r[2]?' class="wide"':''}><span>${esc(r[0])}</span>${esc(r[1])}</div>`).join('')}</div>`:'';
 function detailsHTML(l){
   const sample=String(l.id).startsWith('demo-')?'<p style="color:var(--amber);margin-top:12px">Sample listing for the demo. Not a real apartment; photos are stock images.</p>':'';
-  const rows=[['Available',l.available],['Lease',l.lease],['Deposit',l.deposit],['Pets',l.pets],['Laundry',l.laundry],['Floor',l.floor],['Parking',l.parking]]
-    .filter(r=>r[1]).map(r=>`<div><span>${r[0]}</span>${esc(r[1])}</div>`).join('');
-  return `${sample}${l.title?`<h3>${esc(l.title)}</h3>`:''}
+  const stock=!sample&&(l.media||[]).some(m=>m.stock)?'<p style="color:var(--amber);margin-top:12px">These photos are stock images, not this apartment.</p>':'';
+  const chips=[l.days!=null&&l.days<=7?'New':'',l.type||'',l.days!=null?(l.days===0?'Listed today':l.days+' day'+(l.days===1?'':'s')+' listed'):''].filter(Boolean);
+  const basics=[['Available',l.available],['Lease',l.lease],['Deposit',l.deposit],['Pets',l.pets],['Laundry',l.laundry],['Floor',l.floor],['Parking',l.parking]].filter(r=>r[1]);
+  const facts=(l.facts||[]).filter(f=>!/^days on market$/i.test(f[0]));
+  const contacts=(l.contacts&&l.contacts.length?l.contacts:(l.contact?[{role:'Contact',name:l.contact.name,phone:l.contact.phone}]:[]))
+    .map(c=>`<div class="contact"><span>${esc(c.role||'Contact')}</span>${[c.name,c.phone,c.email,c.website].filter(Boolean).map(esc).join('<br>')}</div>`).join('');
+  const hist=(l.history||[]).map(h=>[`${h.date||''}${h.event?' ('+h.event+')':''}`,money(h.price)]);
+  const extra=rentInsights(l);
+  return `${sample}${stock}${chips.length?`<div class="tags" style="margin-top:12px">${chips.map(c=>`<i>${esc(c)}</i>`).join('')}</div>`:''}
+    ${l.title?`<h3>${esc(l.title)}</h3>`:''}
     ${l.description?`<p>${esc(l.description)}</p>`:''}
-    ${rows?`<h3>Details</h3><div class="grid">${rows}</div>`:''}
+    ${extra.length?`<h3>Rent and location</h3>${gridHTML(extra)}`:''}
+    ${basics.length||facts.length?`<h3>Details</h3>${gridHTML([...basics,...facts])}`:''}
     ${l.amenities&&l.amenities.length?`<h3>Amenities</h3><div class="tags">${l.amenities.map(a=>`<i>${esc(a)}</i>`).join('')}</div>`:''}
-    ${l.contact?`<div class="contact"><span>Leasing contact</span>${esc(l.contact.name||'')} ${esc(l.contact.phone||'')}</div>`:''}`;
+    ${hist.length?`<h3>Rent history</h3>${gridHTML(hist)}`:''}
+    ${contacts?`<h3>Contact</h3>${contacts}`:''}`;
 }
 function buildViewer(l){
   if(vIO) vIO.disconnect();
@@ -769,6 +806,7 @@ function fillSlide(i){
     const im=new Image(); im.decoding='async'; im.alt=m.label||'';
     im.onload=()=>ld.remove(); im.onerror=()=>{ if(m.fb&&!im.dataset.fb){im.dataset.fb='1';im.src=U(m.fb);} else ld.textContent='Photo unavailable'; };
     im.src=U(m.src); s.appendChild(im);
+    if(m.stock){const c=mk('div','cap');c.textContent='Stock photo, not this apartment';c.style.cssText='left:50%;transform:translateX(-50%);bottom:auto;top:58px;white-space:nowrap';s.appendChild(c);}
   }
 }
 function setV(i){
